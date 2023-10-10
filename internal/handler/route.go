@@ -4,11 +4,9 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	log "go.uber.org/zap"
-
-	"github.com/Roma7-7-7/shared-clipboard/internal/config"
 )
 
-func New(conf config.Config, log *log.SugaredLogger) (*echo.Echo, error) {
+func New(sessionRepo SessionRepository, log *log.SugaredLogger) (*echo.Echo, error) {
 	log.Info("Initializing router")
 
 	var (
@@ -24,6 +22,8 @@ func New(conf config.Config, log *log.SugaredLogger) (*echo.Echo, error) {
 
 	setupWeb(e)
 
+	setupAPI(NewAPI(sessionRepo, log), e)
+
 	printRoutes(e, log)
 
 	e.HTTPErrorHandler = customHttpErrorHandler(log)
@@ -38,6 +38,12 @@ func setupWeb(e *echo.Echo) {
 
 	e.Static("/*.html", "web")
 	e.Static("/assets", "web/assets")
+}
+
+func setupAPI(api *API, e *echo.Echo) {
+	apiGroup := e.Group("/api")
+
+	apiGroup.POST("/session", api.Create)
 }
 
 func printRoutes(e *echo.Echo, logger *log.SugaredLogger) {
