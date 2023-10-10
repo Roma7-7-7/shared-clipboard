@@ -47,8 +47,5 @@ func newConfig() config.Config {
 		Server: config.Server{
 			Port: 8080,
 		},
-		Web: config.Web{
-			TemplatesPath: "web/templates/*.html",
-		},
 	}
 }

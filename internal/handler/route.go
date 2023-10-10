@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"fmt"
-
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	log "go.uber.org/zap"
@@ -14,14 +12,9 @@ func New(conf config.Config, log *log.SugaredLogger) (*echo.Echo, error) {
 	log.Info("Initializing router")
 
 	var (
-		e   *echo.Echo
-		err error
+		e *echo.Echo
 	)
 	e = echo.New()
-
-	if e.Renderer, err = NewTemplatesRenderer(conf.Web.TemplatesPath); err != nil {
-		return nil, fmt.Errorf("create renderer: %w", err)
-	}
 
 	e.Use(middleware.RequestID())
 	e.Use(middleware.Logger())
@@ -40,11 +33,11 @@ func New(conf config.Config, log *log.SugaredLogger) (*echo.Echo, error) {
 }
 
 func setupWeb(e *echo.Echo) {
+	e.GET("/favicon.ico", HandleFavicon)
 	e.GET("/", HandleIndex)
-	e.GET("/index", HandleIndex)
-	e.GET("/index.html", HandleIndex)
 
-	e.Static("/static", "web/static")
+	e.Static("/*.html", "web")
+	e.Static("/assets", "web/assets")
 }
 
 func printRoutes(e *echo.Echo, logger *log.SugaredLogger) {

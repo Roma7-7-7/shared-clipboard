@@ -26,3 +26,6 @@ go.work
 # Artifacts
 bin/
 .env
+
+# Data
+data/
