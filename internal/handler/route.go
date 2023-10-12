@@ -16,6 +16,7 @@ func New(sessionRepo SessionRepository, log *log.SugaredLogger) (*echo.Echo, err
 
 	e.Use(middleware.RequestID())
 	e.Use(middleware.Logger())
+	e.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(10)))
 	e.Use(middleware.RemoveTrailingSlash())
 	e.Use(middleware.Recover())
 	e.Use(middleware.Gzip())
@@ -41,9 +42,19 @@ func setupWeb(e *echo.Echo) {
 }
 
 func setupAPI(api *API, e *echo.Echo) {
-	apiGroup := e.Group("/api")
+	apiGroup := e.Group("/apis")
+	apiGroup.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			ac := &APIContext{Context: c}
+			if err := next(ac); err != nil {
+				handleAPIError(ac, err, api.log)
+			}
 
-	apiGroup.POST("/session", api.Create)
+			return nil
+		}
+	})
+
+	apiGroup.POST("/sessions", api.Create)
 }
 
 func printRoutes(e *echo.Echo, logger *log.SugaredLogger) {
