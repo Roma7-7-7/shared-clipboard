@@ -4,7 +4,6 @@ go 1.21.0
 
 require (
 	github.com/dgraph-io/badger/v4 v4.2.0
-	github.com/google/uuid v1.3.1
 	github.com/labstack/echo/v4 v4.11.1
 	go.uber.org/zap v1.26.0
 )
