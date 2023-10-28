@@ -13,7 +13,7 @@ import (
 
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
 	"github.com/Roma7-7-7/shared-clipboard/internal/dal"
-	"github.com/Roma7-7-7/shared-clipboard/internal/handler"
+	"github.com/Roma7-7-7/shared-clipboard/internal/handler/api"
 )
 
 func main() {
@@ -30,34 +30,25 @@ func main() {
 	}
 	log = l.Sugar()
 
-	conf := newConfig()
+	conf := config.New().API
 	log.Info("Initializing DB")
 	if db, err = badger.Open(badger.DefaultOptions(conf.DB.Path)); err != nil {
 		log.Fatal("open db", zap.Error(err))
 	}
 
-	log.Info("Initializing handlers")
-	if h, err = handler.New(dal.NewSessionRepository(db), log); err != nil {
-		l.Fatal("create handler", zap.Error(err))
+	log.Info("Creating router")
+	if h, err = api.NewAPIRouter(dal.NewSessionRepository(db), log); err != nil {
+		log.Fatalw("create router", err)
 	}
 
+	addr := fmt.Sprintf(":%d", conf.Port)
 	s := http.Server{
-		Addr:        fmt.Sprintf(":%d", conf.Server.Port),
+		Addr:        addr,
 		Handler:     h,
 		ReadTimeout: 30 * time.Second,
 	}
+	log.Infof("Starting server on address=%s", addr)
 	if err = s.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-		log.Fatal(err)
-	}
-}
-
-func newConfig() config.Config {
-	return config.Config{
-		Server: config.Server{
-			Port: 8080,
-		},
-		DB: config.DB{
-			Path: "data/badger",
-		},
+		log.Fatalf("server listen error: %s", err)
 	}
 }

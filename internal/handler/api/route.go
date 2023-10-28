@@ -1,4 +1,4 @@
-package handler
+package api
 
 import (
 	"github.com/labstack/echo/v4"
@@ -6,7 +6,7 @@ import (
 	log "go.uber.org/zap"
 )
 
-func New(sessionRepo SessionRepository, log *log.SugaredLogger) (*echo.Echo, error) {
+func NewAPIRouter(sessionRepo SessionRepository, log *log.SugaredLogger) (*echo.Echo, error) {
 	log.Info("Initializing router")
 
 	var (
@@ -21,27 +21,7 @@ func New(sessionRepo SessionRepository, log *log.SugaredLogger) (*echo.Echo, err
 	e.Use(middleware.Recover())
 	e.Use(middleware.Gzip())
 
-	setupWeb(e)
-
-	setupAPI(NewAPI(sessionRepo, log), e)
-
-	printRoutes(e, log)
-
-	e.HTTPErrorHandler = customHttpErrorHandler(log)
-
-	log.Info("Router initialized")
-	return e, nil
-}
-
-func setupWeb(e *echo.Echo) {
-	e.GET("/favicon.ico", HandleFavicon)
-	e.GET("/", HandleIndex)
-
-	e.Static("/*.html", "web")
-	e.Static("/assets", "web/assets")
-}
-
-func setupAPI(api *API, e *echo.Echo) {
+	api := NewAPIService(sessionRepo, log)
 	apiGroup := e.Group("/apis")
 	apiGroup.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -55,6 +35,13 @@ func setupAPI(api *API, e *echo.Echo) {
 	})
 
 	apiGroup.POST("/sessions", api.Create)
+
+	printRoutes(e, log)
+
+	e.HTTPErrorHandler = customHttpErrorHandler(log)
+
+	log.Info("Router initialized")
+	return e, nil
 }
 
 func printRoutes(e *echo.Echo, logger *log.SugaredLogger) {

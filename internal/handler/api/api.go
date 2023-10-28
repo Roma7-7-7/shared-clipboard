@@ -1,4 +1,4 @@
-package handler
+package api
 
 import (
 	"fmt"
@@ -44,21 +44,21 @@ type SessionRepository interface {
 	Create() (*dal.Session, error)
 }
 
-type API struct {
+type APIService struct {
 	sessionRepo SessionRepository
 
 	log *log.SugaredLogger
 }
 
-func NewAPI(sessionRepo SessionRepository, log *log.SugaredLogger) *API {
-	return &API{
+func NewAPIService(sessionRepo SessionRepository, log *log.SugaredLogger) *APIService {
+	return &APIService{
 		sessionRepo: sessionRepo,
 
 		log: log,
 	}
 }
 
-func (a *API) Create(c echo.Context) error {
+func (a *APIService) Create(c echo.Context) error {
 	session, err := a.sessionRepo.Create()
 	if err != nil {
 		return NewAPIError(err, http.StatusInternalServerError, errorCodeCreateSession, "failed to create session", nil)

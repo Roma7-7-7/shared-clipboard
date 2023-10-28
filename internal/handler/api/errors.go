@@ -1,4 +1,4 @@
-package handler
+package api
 
 import (
 	"errors"
@@ -51,7 +51,7 @@ func handleAPIError(c *APIContext, err error, log *log.SugaredLogger) {
 			Code:    fmt.Sprintf("ERR_0%-3d", httpError.Code),
 			Message: http.StatusText(httpError.Code),
 		}); sErr != nil {
-			log.Error("Failed to serve API HTTPError response: ", sErr)
+			log.Error("Failed to serve APIService HTTPError response: ", sErr)
 		}
 		return
 	}
@@ -61,7 +61,7 @@ func handleAPIError(c *APIContext, err error, log *log.SugaredLogger) {
 		Code:    string(errorCodeServerError),
 		Message: http.StatusText(http.StatusInternalServerError),
 	}); sErr != nil {
-		log.Error("Failed to serve API error response: ", sErr)
+		log.Error("Failed to serve APIService error response: ", sErr)
 	}
 }
 
