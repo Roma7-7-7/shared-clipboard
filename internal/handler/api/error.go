@@ -37,18 +37,6 @@ func marshalErrorBody() []byte {
 	return []byte(fmt.Sprintf(errorResponseTmpl, errorCodeMarshalResponse, "Failed to marshal response"))
 }
 
-func errorResponse(errorCode errorCode, message string, details any) ([]byte, error) {
-	body := map[string]interface{}{
-		"code":    string(errorCode),
-		"message": message,
-	}
-	if details != nil {
-		body["details"] = details
-	}
-
-	return handler.ToJSON(body)
-}
-
 func sendErrorMarshalBody(ctx context.Context, rw http.ResponseWriter, log trace.Logger) {
 	handler.Send(ctx, rw, http.StatusInternalServerError, handler.ContentTypeJSON, marshalErrorBody(), log)
 }
