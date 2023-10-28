@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/labstack/echo/v4"
+	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
@@ -31,7 +31,7 @@ func main() {
 		l                    *zap.Logger
 		log                  trace.Logger
 		conf                 config.Web
-		h                    *echo.Echo
+		h                    *chi.Mux
 		err                  error
 	)
 	defer cancel()

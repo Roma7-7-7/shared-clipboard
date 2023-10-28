@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
-	"github.com/labstack/echo/v4"
+	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
@@ -33,7 +33,7 @@ func main() {
 		log                  trace.Logger
 		conf                 config.API
 		db                   *badger.DB
-		h                    *echo.Echo
+		h                    *chi.Mux
 		err                  error
 	)
 	defer cancel()

@@ -3,43 +3,61 @@ package api
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"time"
 
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/httprate"
 
 	"github.com/Roma7-7-7/shared-clipboard/internal/handler"
 	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
-func NewRouter(ctx context.Context, sessionRepo SessionRepository, log trace.Logger) (*echo.Echo, error) {
-	log.Infow(ctx, "Initializing router")
-
-	e := echo.New()
-
-	e.Use(middleware.RequestID())
-	e.Use(handler.Middleware)
-	e.Use(middleware.Logger())
-	e.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(10)))
-	e.Use(middleware.RemoveTrailingSlash())
-	e.Use(middleware.Recover())
-	e.Use(middleware.Gzip())
-
-	apiService := NewAPIService(sessionRepo, log)
-	apiGroup := e.Group("/")
-
-	apiGroup.POST("/sessions", apiService.Create)
-
-	printRoutes(ctx, e, log)
-
-	e.HTTPErrorHandler = customHttpErrorHandler(log)
-
-	log.Infow(ctx, "Router initialized")
-	return e, nil
+type Response interface {
+	SendJSON(ctx context.Context, code int, rw http.ResponseWriter)
 }
 
-func printRoutes(ctx context.Context, e *echo.Echo, logger trace.Logger) {
+func NewRouter(ctx context.Context, sessionRepo SessionRepository, log trace.Logger) (*chi.Mux, error) {
+	log.Infow(ctx, "Initializing router")
+
+	r := chi.NewRouter()
+
+	r.Use(handler.TraceID)
+	r.Use(handler.Logger(log))
+	r.Use(httprate.LimitByIP(10, 1*time.Second))
+	r.Use(middleware.RedirectSlashes)
+	r.Use(middleware.Recoverer)
+	r.Use(middleware.Compress(5, "text/javascript"))
+
+	apiService := NewAPIService(sessionRepo, log)
+
+	r.Post("/sessions", apiService.Create)
+
+	r.NotFound(handleNotFound)
+	r.MethodNotAllowed(handleMethodNotAllowed)
+
+	printRoutes(ctx, r, log)
+
+	log.Infow(ctx, "Router initialized")
+	return r, nil
+}
+
+func handleNotFound(rw http.ResponseWriter, r *http.Request) {
+	handler.Send(r.Context(), rw, http.StatusNotFound, handler.ContentTypeJSON, notFoundErrorBody(), nil)
+}
+
+func handleMethodNotAllowed(rw http.ResponseWriter, r *http.Request) {
+	handler.Send(r.Context(), rw, http.StatusMethodNotAllowed, handler.ContentTypeJSON, methodNotAllowedErrorBody(r.Method), nil)
+}
+
+func printRoutes(ctx context.Context, r *chi.Mux, logger trace.Logger) {
 	logger.Infow(ctx, "Routes:")
-	for _, r := range e.Routes() {
-		logger.Infow(ctx, fmt.Sprintf("%s %s", r.Method, r.Path))
+	err := chi.Walk(r, func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
+		logger.Infow(ctx, fmt.Sprintf("[%s]: '%s' has %d middlewares", method, route, len(middlewares)))
+		return nil
+	})
+	if err != nil {
+		logger.Errorw(ctx, "Failed to walk routes", err)
 	}
 }

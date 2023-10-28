@@ -28,3 +28,7 @@ build-all: build-web build-api
 # Run web
 run-web: build-web
 	./bin/web/web -api-host $(API_HOST) -static-files-path ./bin/web/static
+
+# Run api
+run-api: build-api
+	./bin/api/api -data ./data
