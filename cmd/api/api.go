@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"errors"
+	"flag"
 	"fmt"
 	stdlog "log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
@@ -14,31 +17,54 @@ import (
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
 	"github.com/Roma7-7-7/shared-clipboard/internal/dal"
 	"github.com/Roma7-7-7/shared-clipboard/internal/handler/api"
+	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
+var dev = flag.Bool("dev", false, "development mode")
+var port = flag.Int("port", 8080, "port to listen")
+var dataPath = flag.String("data", "", "path to data directory")
+
 func main() {
+	flag.Parse()
+
 	var (
-		l   *zap.Logger
-		log *zap.SugaredLogger
-		db  *badger.DB
-		h   *echo.Echo
-		err error
+		bootstrapCtx, cancel = context.WithTimeout(context.Background(), 1*time.Minute)
+		l                    *zap.Logger
+		log                  trace.Logger
+		conf                 config.API
+		db                   *badger.DB
+		h                    *echo.Echo
+		err                  error
 	)
+	defer cancel()
+	bootstrapCtx = trace.WithTraceID(context.Background(), "bootstrap")
 
-	if l, err = zap.NewDevelopment(); err != nil {
-		stdlog.Fatalf("create logger: %v", err)
+	if *dev {
+		if l, err = zap.NewDevelopment(); err != nil {
+			stdlog.Fatalf("create logger: %v", err)
+		}
+	} else {
+		if l, err = zap.NewProduction(); err != nil {
+			stdlog.Fatalf("create logger: %v", err)
+		}
 	}
-	log = l.Sugar()
+	log = trace.NewSugaredLogger(l.Sugar())
 
-	conf := config.New().API
-	log.Info("Initializing DB")
+	if conf, err = config.NewAPI(bootstrapCtx, *dev, *port, *dataPath, log); err != nil {
+		log.Errorw(bootstrapCtx, "create config", err)
+		os.Exit(1)
+	}
+
+	log.Infow(bootstrapCtx, "Initializing DB")
 	if db, err = badger.Open(badger.DefaultOptions(conf.DB.Path)); err != nil {
-		log.Fatal("open db", zap.Error(err))
+		log.Errorw(bootstrapCtx, "open db", zap.Error(err))
+		os.Exit(1)
 	}
 
-	log.Info("Creating router")
-	if h, err = api.NewAPIRouter(dal.NewSessionRepository(db), log); err != nil {
-		log.Fatalw("create router", err)
+	log.Infow(bootstrapCtx, "Creating router")
+	if h, err = api.NewRouter(bootstrapCtx, dal.NewSessionRepository(db), log); err != nil {
+		log.Errorw(bootstrapCtx, "create router", err)
+		os.Exit(1)
 	}
 
 	addr := fmt.Sprintf(":%d", conf.Port)
@@ -47,8 +73,8 @@ func main() {
 		Handler:     h,
 		ReadTimeout: 30 * time.Second,
 	}
-	log.Infof("Starting server on address=%s", addr)
+	log.Infow(bootstrapCtx, "Starting server", "address", addr)
 	if err = s.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-		log.Fatalf("server listen error: %s", err)
+		log.Errorw(trace.WithTraceID(context.Background(), "termination"), "server listen error", err)
 	}
 }

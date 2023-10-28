@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
 	stdlog "log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -13,6 +15,7 @@ import (
 
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
 	"github.com/Roma7-7-7/shared-clipboard/internal/handler/web"
+	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
 var dev = flag.Bool("dev", false, "development mode")
@@ -24,12 +27,15 @@ func main() {
 	flag.Parse()
 
 	var (
-		l    *zap.Logger
-		log  *zap.SugaredLogger
-		conf config.Web
-		h    *echo.Echo
-		err  error
+		bootstrapCtx, cancel = context.WithTimeout(context.Background(), 1*time.Minute)
+		l                    *zap.Logger
+		log                  trace.Logger
+		conf                 config.Web
+		h                    *echo.Echo
+		err                  error
 	)
+	defer cancel()
+	bootstrapCtx = trace.WithTraceID(context.Background(), "bootstrap")
 
 	if *dev {
 		if l, err = zap.NewDevelopment(); err != nil {
@@ -40,15 +46,17 @@ func main() {
 			stdlog.Fatalf("create logger: %v", err)
 		}
 	}
-	log = l.Sugar()
+	log = trace.NewSugaredLogger(l.Sugar())
 
-	if conf, err = config.NewWeb(*dev, *port, *staticFilesPath, *apiHost, log); err != nil {
-		log.Fatalw("create config", err)
+	if conf, err = config.NewWeb(bootstrapCtx, *dev, *port, *staticFilesPath, *apiHost, log); err != nil {
+		log.Errorw(bootstrapCtx, "create config", err)
+		os.Exit(1)
 	}
 
-	log.Info("Creating router")
-	if h, err = web.NewRouter(conf, log); err != nil {
-		log.Fatalw("create router", err)
+	log.Infow(bootstrapCtx, "Creating router")
+	if h, err = web.NewRouter(bootstrapCtx, conf, log); err != nil {
+		log.Errorw(bootstrapCtx, "create router", err)
+		os.Exit(1)
 	}
 
 	addr := fmt.Sprintf(":%d", conf.Port)
@@ -57,8 +65,8 @@ func main() {
 		Handler:     h,
 		ReadTimeout: 30 * time.Second,
 	}
-	log.Infow("Starting server", "address", addr)
+	log.Infow(bootstrapCtx, "Starting server", "address", addr)
 	if err = s.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-		log.Fatalf("server listen error: %s", err)
+		log.Errorw(trace.WithTraceID(context.Background(), "termination"), "server listen error", err)
 	}
 }

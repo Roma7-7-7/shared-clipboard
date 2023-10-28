@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -8,19 +9,22 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	log "go.uber.org/zap"
 
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
+	"github.com/Roma7-7-7/shared-clipboard/internal/handler"
+	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
-func NewRouter(conf config.Web, log *log.SugaredLogger) (*echo.Echo, error) {
-	log.Info("Initializing web router")
+func NewRouter(ctx context.Context, conf config.Web, log trace.Logger) (*echo.Echo, error) {
+	log.Infow(ctx, "Initializing web router")
 
 	var (
 		e *echo.Echo
 	)
 	e = echo.New()
 
+	e.Use(middleware.RequestID())
+	e.Use(handler.Middleware)
 	e.Use(middleware.Logger())
 	e.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(10)))
 	e.Use(middleware.RemoveTrailingSlash())
@@ -41,7 +45,7 @@ func NewRouter(conf config.Web, log *log.SugaredLogger) (*echo.Echo, error) {
 
 	e.HTTPErrorHandler = customHttpErrorHandler(conf, log)
 
-	log.Info("Router initialized")
+	log.Infow(ctx, "Router initialized")
 	return e, nil
 }
 
@@ -63,7 +67,7 @@ func HandleIndex(c echo.Context) error {
 	return err
 }
 
-func customHttpErrorHandler(conf config.Web, log *log.SugaredLogger) echo.HTTPErrorHandler {
+func customHttpErrorHandler(conf config.Web, log trace.Logger) echo.HTTPErrorHandler {
 	return func(err error, c echo.Context) {
 		var httpError *echo.HTTPError
 		if errors.As(err, &httpError) {
@@ -71,9 +75,9 @@ func customHttpErrorHandler(conf config.Web, log *log.SugaredLogger) echo.HTTPEr
 			return
 		}
 
-		log.Error("Unexpected error occurred: ", err)
+		log.Errorw(c.Request().Context(), "Unexpected error occurred", err)
 		if err = c.File(staticPath(conf, "error.html")); err != nil {
-			log.Error("Failed to serve error page: ", err)
+			log.Errorw(c.Request().Context(), "Failed to serve error page: ", err)
 		}
 	}
 }
@@ -82,18 +86,18 @@ func staticPath(conf config.Web, suffix string) string {
 	return fmt.Sprintf("%s/%s", conf.StaticFilesPath, suffix)
 }
 
-func handleHttpError(httpError *echo.HTTPError, c echo.Context, log *log.SugaredLogger) {
+func handleHttpError(httpError *echo.HTTPError, c echo.Context, log trace.Logger) {
 	var redirectPage string
 	switch httpError.Code {
 	case http.StatusNotFound:
 		redirectPage = "404"
 	case http.StatusTooManyRequests:
 		if sErr := c.NoContent(http.StatusTooManyRequests); sErr != nil {
-			log.Error("Failed to serve too many requests error response: ", sErr)
+			log.Errorw(c.Request().Context(), "Failed to serve too many requests error response: ", sErr)
 			return
 		}
 	default:
-		log.Error("Unexpected http error: ", httpError)
+		log.Errorw(c.Request().Context(), "Unexpected http error: ", httpError)
 		redirectPage = "error"
 	}
 
@@ -101,13 +105,13 @@ func handleHttpError(httpError *echo.HTTPError, c echo.Context, log *log.Sugared
 
 	if redirectPage == c.Request().URL.Path { // to prevent infinite redirect loop
 		if sErr := c.String(http.StatusInternalServerError, "Internal server error"); sErr != nil {
-			log.Error("Failed to serve error response in infinite redirects catch loop: ", sErr)
+			log.Errorw(c.Request().Context(), "Failed to serve error response in infinite redirects catch loop: ", sErr)
 			return
 		}
 		return
 	}
 
 	if err := c.Redirect(http.StatusFound, redirectPage); err != nil {
-		log.Error("Failed to redirect to page %s: ", redirectPage, err)
+		log.Errorw(c.Request().Context(), "Failed to redirect to page %s: ", redirectPage, err)
 	}
 }
