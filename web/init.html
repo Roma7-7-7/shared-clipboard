@@ -2,21 +2,28 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Clipboard share</title>
+    <title>Shared clipboard</title>
     <link rel="stylesheet" href="assets/css/main.css">
 </head>
 <body>
 <div class="navbar">
-    <h1>Clipboard share</h1>
+    <h1>Shared clipboard</h1>
     <div class="buttons">
-        <button>Join</button>
+        <button id="homeButton">Home</button>
     </div>
 </div>
 <div id="header">
-    <p>Here you init new clipboard session.</p>
-    <p>Open another browser to join this session and paste provided key (you need to navigate to join page via corresponding button).</p>
+    <p>Here you init a new clipboard session.</p>
+    <p>Open another browser to join this session and paste the provided key (you need to navigate to the join page via the corresponding button).</p>
+</div>
+<div class="container">
+    <div id="sessionID">ABC123</div>
+    <div class="buttons">
+        <button id="proceedButton">Proceed</button>
+    </div>
 </div>
 </body>
 <script src="assets/js/env.js"></script>
 <script src="assets/js/main.js"></script>
+<script src="assets/js/init.js"></script>
 </html>

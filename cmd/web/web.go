@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/labstack/echo/v4"
+	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
@@ -19,9 +19,7 @@ import (
 )
 
 var dev = flag.Bool("dev", false, "development mode")
-var port = flag.Int("port", 80, "port to listen")
-var staticFilesPath = flag.String("static-files-path", "", "path to static files")
-var apiHost = flag.String("api-host", "", "api host")
+var configPath = flag.String("config", "web.json", "path to config file")
 
 func main() {
 	flag.Parse()
@@ -31,7 +29,7 @@ func main() {
 		l                    *zap.Logger
 		log                  trace.Logger
 		conf                 config.Web
-		h                    *echo.Echo
+		h                    *chi.Mux
 		err                  error
 	)
 	defer cancel()
@@ -48,7 +46,7 @@ func main() {
 	}
 	log = trace.NewSugaredLogger(l.Sugar())
 
-	if conf, err = config.NewWeb(bootstrapCtx, *dev, *port, *staticFilesPath, *apiHost, log); err != nil {
+	if conf, err = config.NewWeb(bootstrapCtx, *dev, *configPath, log); err != nil {
 		log.Errorw(bootstrapCtx, "create config", err)
 		os.Exit(1)
 	}

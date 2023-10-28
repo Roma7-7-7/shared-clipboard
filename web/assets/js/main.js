@@ -1,10 +1,11 @@
-const headerH1 = document.querySelector(".navbar h1");
+redirectOnClick(document.querySelector(".navbar h1"), "/")
+redirectOnClick(document.getElementById("initButton"), "/init.html");
+redirectOnClick(document.getElementById("homeButton"), "/");
 
-headerH1.addEventListener("click", function() {
-    window.location.href = "/";
-});
-
-
-document.getElementById("initButton").addEventListener("click", function() {
-    window.location.href = "/init.html";
-});
+function redirectOnClick(elem, url) {
+    if (elem) {
+        elem.addEventListener("click", function() {
+            window.location.href = url;
+        });
+    }
+}

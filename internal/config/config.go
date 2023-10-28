@@ -2,17 +2,19 @@ package config
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
-func NewWeb(ctx context.Context, dev bool, port int, staticFilesPath, apiHost string, log trace.Logger) (Web, error) {
-	res := Web{
-		Port:            port,
-		StaticFilesPath: staticFilesPath,
-		APIHost:         apiHost,
+func NewWeb(ctx context.Context, dev bool, confPath string, log trace.Logger) (Web, error) {
+	var res Web
+	if err := readConfig(confPath, &res); err != nil {
+		return res, fmt.Errorf("read config: %w", err)
 	}
 	if dev {
 		if res.StaticFilesPath == "" {
@@ -27,13 +29,12 @@ func NewWeb(ctx context.Context, dev bool, port int, staticFilesPath, apiHost st
 	return res, validateWeb(res)
 }
 
-func NewAPI(ctx context.Context, dev bool, port int, dataPath string, log trace.Logger) (API, error) {
-	api := API{
-		Port: port,
-		DB: DB{
-			Path: dataPath,
-		},
+func NewAPI(ctx context.Context, dev bool, confPath string, log trace.Logger) (API, error) {
+	var api API
+	if err := readConfig(confPath, &api); err != nil {
+		return api, fmt.Errorf("read config: %w", err)
 	}
+
 	if dev {
 		if api.Port == 0 {
 			api.Port = 8080
@@ -48,18 +49,48 @@ func NewAPI(ctx context.Context, dev bool, port int, dataPath string, log trace.
 }
 
 type Web struct {
-	Port            int
-	StaticFilesPath string
-	APIHost         string
+	Port            int    `json:"port"`
+	StaticFilesPath string `json:"static_files_path"`
+	APIHost         string `json:"api_host"`
 }
 
 type API struct {
-	Port int
-	DB   DB
+	Port int  `json:"port"`
+	CORS CORS `json:"cors"`
+	DB   DB   `json:"db"`
+}
+
+type CORS struct {
+	AllowOrigin      string   `json:"allow_origin"`
+	AllowMethods     []string `json:"allow_methods"`
+	AllowHeaders     []string `json:"allow_headers"`
+	ExposeHeaders    []string `json:"expose_headers"`
+	MaxAge           int      `json:"max_age"`
+	AllowCredentials bool     `json:"allow_credentials"`
 }
 
 type DB struct {
-	Path string
+	Path string `yaml:"path"`
+}
+
+func readConfig(path string, target any) error {
+	if path == "" {
+		return errors.New("empty path")
+	}
+
+	open, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer func(open *os.File) {
+		_ = open.Close()
+	}(open)
+
+	if err = json.NewDecoder(open).Decode(target); err != nil {
+		return fmt.Errorf("decode config file with path=\"%s\": %w", path, err)
+	}
+
+	return nil
 }
 
 func validateWeb(conf Web) error {
