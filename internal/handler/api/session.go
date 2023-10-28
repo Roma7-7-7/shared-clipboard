@@ -39,7 +39,7 @@ func (s *Service) Create(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.log.Debugw(r.Context(), "Created session", "id", session.ID)
+	s.log.Debugw(r.Context(), "Created session", "id", session.SessionID)
 	if body, err = handler.ToJSON(session); err != nil {
 		s.log.Errorw(r.Context(), "failed to marshal session", err)
 		sendErrorMarshalBody(r.Context(), rw, s.log)

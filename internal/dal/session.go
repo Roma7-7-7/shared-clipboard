@@ -13,14 +13,14 @@ import (
 const idLength = 6
 
 var (
-	idRunes = []rune("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	idRunes = []rune("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 	errSessionAlreadyExists = errors.New("session with specified ID already exists")
 )
 
 type Session struct {
-	ID       string
-	LastUsed time.Time
+	SessionID string `json:"session_id"`
+	LastUsed  int64  `json:"last_used"`
 }
 
 type SessionRepository struct {
@@ -61,12 +61,12 @@ func (r *SessionRepository) Get(key string) (*Session, error) {
 
 func (r *SessionRepository) Create() (*Session, error) {
 	s := &Session{
-		ID:       newID(),
-		LastUsed: time.Now(),
+		SessionID: newID(),
+		LastUsed:  time.Now().UnixMicro(),
 	}
 
 	if err := r.db.Update(func(txn *badger.Txn) error {
-		_, err := txn.Get([]byte(s.ID))
+		_, err := txn.Get([]byte(s.SessionID))
 		if err == nil {
 			return errSessionAlreadyExists
 		} else if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
@@ -78,7 +78,7 @@ func (r *SessionRepository) Create() (*Session, error) {
 			return fmt.Errorf("marshal: %w", err)
 		}
 
-		return txn.Set([]byte(s.ID), val)
+		return txn.Set([]byte(s.SessionID), val)
 	}); err != nil {
 		if errors.Is(err, errSessionAlreadyExists) {
 			return nil, fmt.Errorf("create session: session already exists: %w", ErrAlreadyExists)

@@ -1,8 +1,10 @@
-
 body {
     margin: 0;
     padding: 0;
     font-family: Arial, sans-serif;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
 }
 
 .navbar {
@@ -10,7 +12,7 @@ body {
     justify-content: space-between;
     background-color: #333;
     color: #fff;
-    padding: 10px;
+    padding: 20px;
 }
 
 .navbar h1 {
@@ -21,11 +23,11 @@ body {
     cursor: pointer;
 }
 
-.navbar .buttons {
-    display: flex;
+.buttons {
+    display: block;
 }
 
-.navbar .buttons button {
+.buttons button {
     background-color: #4CAF50;
     color: #fff;
     border: none;
@@ -38,12 +40,55 @@ body {
     text-align: left;
     padding: 20px;
     background-color: #f0f0f0;
+    width: 100%;
 }
-
 
 #header.error {
     color: red;
     font-size: 24px;
     font-weight: bold;
     margin-top: 10px;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.container .buttons {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    margin-top: 15px;
+    width: 150px;
+}
+
+.container .buttons button {
+    width: 100%;
+    margin: 0;
+}
+
+#sessionID {
+    width: 200px;
+    height: 100px;
+    background-color: #f0f0f0;
+    display: flex;
+    justify-content: center; /* Center horizontally */
+    align-items: center; /* Center vertically */
+    margin-top: 20px;
+    padding: 20px;
+    border: 2px solid rgb(128, 128, 128);
+    border-radius: 10px;
+    font-family: Arial, sans-serif;
+    font-size: 48px;
+    font-weight: bold;
+    color: darkgrey;
+}
+
+#sessionID:hover {
+    cursor: copy;
 }

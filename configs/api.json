@@ -1,0 +1,14 @@
+{
+  "port": 8080,
+  "cors": {
+    "allow_origin": "localhost",
+    "allow_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "allow_headers": ["Origin", "X-Requested-With", "Content-Type", "Accept", "Authorization"],
+    "expose_headers": ["Location"],
+    "max_age": 300,
+    "allow_credentials": false
+  },
+  "db": {
+    "path": "./data"
+  }
+}

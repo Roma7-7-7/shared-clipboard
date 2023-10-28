@@ -21,8 +21,7 @@ import (
 )
 
 var dev = flag.Bool("dev", false, "development mode")
-var port = flag.Int("port", 8080, "port to listen")
-var dataPath = flag.String("data", "", "path to data directory")
+var configPath = flag.String("config", "", "path to config file")
 
 func main() {
 	flag.Parse()
@@ -50,7 +49,7 @@ func main() {
 	}
 	log = trace.NewSugaredLogger(l.Sugar())
 
-	if conf, err = config.NewAPI(bootstrapCtx, *dev, *port, *dataPath, log); err != nil {
+	if conf, err = config.NewAPI(bootstrapCtx, *dev, *configPath, log); err != nil {
 		log.Errorw(bootstrapCtx, "create config", err)
 		os.Exit(1)
 	}
@@ -62,7 +61,7 @@ func main() {
 	}
 
 	log.Infow(bootstrapCtx, "Creating router")
-	if h, err = api.NewRouter(bootstrapCtx, dal.NewSessionRepository(db), log); err != nil {
+	if h, err = api.NewRouter(bootstrapCtx, dal.NewSessionRepository(db), conf, log); err != nil {
 		log.Errorw(bootstrapCtx, "create router", err)
 		os.Exit(1)
 	}

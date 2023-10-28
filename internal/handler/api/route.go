@@ -8,8 +8,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/go-chi/httprate"
 
+	"github.com/Roma7-7-7/shared-clipboard/internal/config"
 	"github.com/Roma7-7-7/shared-clipboard/internal/handler"
 	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
@@ -18,7 +20,7 @@ type Response interface {
 	SendJSON(ctx context.Context, code int, rw http.ResponseWriter)
 }
 
-func NewRouter(ctx context.Context, sessionRepo SessionRepository, log trace.Logger) (*chi.Mux, error) {
+func NewRouter(ctx context.Context, sessionRepo SessionRepository, conf config.API, log trace.Logger) (*chi.Mux, error) {
 	log.Infow(ctx, "Initializing router")
 
 	r := chi.NewRouter()
@@ -29,6 +31,14 @@ func NewRouter(ctx context.Context, sessionRepo SessionRepository, log trace.Log
 	r.Use(middleware.RedirectSlashes)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Compress(5, "text/javascript"))
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{fmt.Sprintf("http://%s", conf.CORS.AllowOrigin), fmt.Sprintf("https://%s", conf.CORS.AllowOrigin)},
+		AllowedMethods:   conf.CORS.AllowMethods,
+		AllowedHeaders:   conf.CORS.AllowHeaders,
+		ExposedHeaders:   conf.CORS.ExposeHeaders,
+		MaxAge:           conf.CORS.MaxAge,
+		AllowCredentials: conf.CORS.AllowCredentials,
+	}))
 
 	apiService := NewAPIService(sessionRepo, log)
 
