@@ -13,11 +13,12 @@ type AppContext struct {
 }
 
 func (c *AppContext) Request() *http.Request {
+	original := c.Context.Request()
 	tid := "undefined"
 	if c.Response().Header().Get(echo.HeaderXRequestID) != "" {
 		tid = c.Response().Header().Get(echo.HeaderXRequestID)
 	}
-	return c.Request().WithContext(trace.WithTraceID(c.Request().Context(), tid))
+	return original.WithContext(trace.WithTraceID(original.Context(), tid))
 }
 
 func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
