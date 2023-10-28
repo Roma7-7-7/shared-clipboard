@@ -37,7 +37,7 @@ func main() {
 		err                  error
 	)
 	defer cancel()
-	bootstrapCtx = trace.WithTraceID(context.Background(), "bootstrap")
+	bootstrapCtx = trace.WithTraceID(bootstrapCtx, "bootstrap")
 
 	if *dev {
 		if l, err = zap.NewDevelopment(); err != nil {

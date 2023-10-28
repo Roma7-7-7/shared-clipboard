@@ -14,10 +14,7 @@ import (
 func NewRouter(ctx context.Context, sessionRepo SessionRepository, log trace.Logger) (*echo.Echo, error) {
 	log.Infow(ctx, "Initializing router")
 
-	var (
-		e *echo.Echo
-	)
-	e = echo.New()
+	e := echo.New()
 
 	e.Use(middleware.RequestID())
 	e.Use(handler.Middleware)
