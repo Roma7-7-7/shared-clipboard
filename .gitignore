@@ -26,3 +26,9 @@ go.work
 # Artifacts
 bin/
 .env
+
+# Data
+data/
+
+# Env
+web/assets/js/env.js
