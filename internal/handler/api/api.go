@@ -40,11 +40,11 @@ func NewRouter(ctx context.Context, sessionRepo SessionRepository, conf config.A
 		AllowCredentials: conf.CORS.AllowCredentials,
 	}))
 
-	apiService := NewAPIService(sessionRepo, log)
+	sessionHandler := NewSessionHandler(sessionRepo, log)
 
-	r.Post("/sessions", apiService.Create)
+	r.Route("/sessions", sessionHandler.RegisterRoutes)
 
-	r.NotFound(handleNotFound)
+	r.NotFound(handleNotFound(log))
 	r.MethodNotAllowed(handleMethodNotAllowed)
 
 	printRoutes(ctx, r, log)
@@ -53,8 +53,10 @@ func NewRouter(ctx context.Context, sessionRepo SessionRepository, conf config.A
 	return r, nil
 }
 
-func handleNotFound(rw http.ResponseWriter, r *http.Request) {
-	handler.Send(r.Context(), rw, http.StatusNotFound, handler.ContentTypeJSON, notFoundErrorBody(), nil)
+func handleNotFound(log trace.Logger) func(rw http.ResponseWriter, r *http.Request) {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		sendNotFound(r.Context(), rw, log)
+	}
 }
 
 func handleMethodNotAllowed(rw http.ResponseWriter, r *http.Request) {

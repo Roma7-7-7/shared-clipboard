@@ -37,6 +37,10 @@ func marshalErrorBody() []byte {
 	return []byte(fmt.Sprintf(errorResponseTmpl, errorCodeMarshalResponse, "Failed to marshal response"))
 }
 
+func sendNotFound(ctx context.Context, rw http.ResponseWriter, log trace.Logger) {
+	handler.Send(ctx, rw, http.StatusNotFound, handler.ContentTypeJSON, notFoundErrorBody(), log)
+}
+
 func sendErrorMarshalBody(ctx context.Context, rw http.ResponseWriter, log trace.Logger) {
 	handler.Send(ctx, rw, http.StatusInternalServerError, handler.ContentTypeJSON, marshalErrorBody(), log)
 }

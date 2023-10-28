@@ -19,9 +19,6 @@ fetch(apiHost + '/sessions', {"method": "POST"})
     .then(data => {
         let sessionID = data["session_id"];
         sessionIdElement.innerText = sessionID;
-        localStorage.setItem("sessionID", sessionID);
+        storeSessionID(sessionID)
     })
-    .catch(error => {
-        console.error(error);
-        window.location.href = "/error.html";
-    })
+    .catch(redirectError)

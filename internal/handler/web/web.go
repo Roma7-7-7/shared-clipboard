@@ -79,7 +79,7 @@ func (h handleSpecificError) ServeHTTP(rw http.ResponseWriter, r *http.Request) 
 
 	_, err := h.fs.Open(cleanPath)
 	if os.IsNotExist(err) {
-		http.Redirect(rw, r, "/404.html", http.StatusMovedPermanently)
+		http.Redirect(rw, r, "/404.html", http.StatusSeeOther)
 		return
 	}
 

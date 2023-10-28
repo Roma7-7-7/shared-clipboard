@@ -27,6 +27,12 @@ body {
     display: block;
 }
 
+.buttons button[disabled] {
+    background-color: #ccc; /* Change the background color for disabled button */
+    color: #666; /* Change the text color for disabled button */
+    cursor: not-allowed; /* Change the cursor to not-allowed for disabled button */
+}
+
 .buttons button {
     background-color: #4CAF50;
     color: #fff;
