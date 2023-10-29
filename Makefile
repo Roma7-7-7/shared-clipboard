@@ -14,29 +14,29 @@ clean:
 # Build web
 build-web:
 	rm -rf ./bin/web
-	go build -o bin/web/web ./cmd/web/web.go
+	go build -o bin/web ./cmd/web/web.go
 
 # Build api
 build-api:
 	rm -rf ./bin/api
-	go build -o bin/api/api ./cmd/api/api.go
+	go build -o bin/api ./cmd/api/api.go
 
 # Build dev
 build-dev:
 	rm -rf ./bin/dev
-	go build -o bin/dev/dev ./cmd/dev/dev.go
+	go build -o bin/dev ./cmd/dev/dev.go
 
 # Build all
 build-all: build-web build-api build-dev
 
 # Run web
 run-web: build-web
-	./bin/web/web -config ./configs/web.json
+	./bin/web -config ./configs/web.json
 
 # Run api
 run-api: build-api
-	./bin/api/api -config ./configs/api.json
+	./bin/api -config ./configs/api.json
 
 # Run dev
 run-dev: build-dev
-	./bin/dev/dev -api-config ./configs/api.json -web-config ./configs/web.json
+	./bin/dev -api-config ./configs/api.json -web-config ./configs/web.json
