@@ -1,11 +1,10 @@
-package api
+package rest
 
 import (
 	"context"
 	"fmt"
 	"net/http"
 
-	"github.com/Roma7-7-7/shared-clipboard/internal/handler"
 	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
@@ -37,14 +36,18 @@ func marshalErrorBody() []byte {
 	return []byte(fmt.Sprintf(errorResponseTmpl, errorCodeMarshalResponse, "Failed to marshal response"))
 }
 
-func sendNotFound(ctx context.Context, rw http.ResponseWriter, log trace.Logger) {
-	handler.Send(ctx, rw, http.StatusNotFound, handler.ContentTypeJSON, notFoundErrorBody(), log)
+func SendNotFound(ctx context.Context, rw http.ResponseWriter, log trace.Logger) {
+	Send(ctx, rw, http.StatusNotFound, ContentTypeJSON, notFoundErrorBody(), log)
 }
 
-func sendErrorMarshalBody(ctx context.Context, rw http.ResponseWriter, log trace.Logger) {
-	handler.Send(ctx, rw, http.StatusInternalServerError, handler.ContentTypeJSON, marshalErrorBody(), log)
+func SendErrorMarshalBody(ctx context.Context, rw http.ResponseWriter, log trace.Logger) {
+	Send(ctx, rw, http.StatusInternalServerError, ContentTypeJSON, marshalErrorBody(), log)
 }
 
-func sendInternalServerError(ctx context.Context, rw http.ResponseWriter, log trace.Logger) {
-	handler.Send(ctx, rw, http.StatusInternalServerError, handler.ContentTypeJSON, internalServerErrorBody(), log)
+func SendErrorMethodNotAllowed(ctx context.Context, method string, rw http.ResponseWriter, log trace.Logger) {
+	Send(ctx, rw, http.StatusMethodNotAllowed, ContentTypeJSON, methodNotAllowedErrorBody(method), log)
+}
+
+func SendInternalServerError(ctx context.Context, rw http.ResponseWriter, log trace.Logger) {
+	Send(ctx, rw, http.StatusInternalServerError, ContentTypeJSON, internalServerErrorBody(), log)
 }

@@ -13,14 +13,12 @@ import (
 
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
 	"github.com/Roma7-7-7/shared-clipboard/internal/handler"
+	"github.com/Roma7-7-7/shared-clipboard/internal/handler/api/session"
+	"github.com/Roma7-7-7/shared-clipboard/tools/rest"
 	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
-type Response interface {
-	SendJSON(ctx context.Context, code int, rw http.ResponseWriter)
-}
-
-func NewRouter(ctx context.Context, sessionRepo SessionRepository, conf config.API, log trace.Logger) (*chi.Mux, error) {
+func NewRouter(ctx context.Context, sessionRepo session.Repository, conf config.API, log trace.Logger) (*chi.Mux, error) {
 	log.Infow(ctx, "Initializing router")
 
 	r := chi.NewRouter()
@@ -40,12 +38,12 @@ func NewRouter(ctx context.Context, sessionRepo SessionRepository, conf config.A
 		AllowCredentials: conf.CORS.AllowCredentials,
 	}))
 
-	sessionHandler := NewSessionHandler(sessionRepo, log)
+	sessionHandler := session.NewSessionHandler(sessionRepo, log)
 
 	r.Route("/sessions", sessionHandler.RegisterRoutes)
 
 	r.NotFound(handleNotFound(log))
-	r.MethodNotAllowed(handleMethodNotAllowed)
+	r.MethodNotAllowed(handleMethodNotAllowed(log))
 
 	printRoutes(ctx, r, log)
 
@@ -55,12 +53,14 @@ func NewRouter(ctx context.Context, sessionRepo SessionRepository, conf config.A
 
 func handleNotFound(log trace.Logger) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		sendNotFound(r.Context(), rw, log)
+		rest.SendNotFound(r.Context(), rw, log)
 	}
 }
 
-func handleMethodNotAllowed(rw http.ResponseWriter, r *http.Request) {
-	handler.Send(r.Context(), rw, http.StatusMethodNotAllowed, handler.ContentTypeJSON, methodNotAllowedErrorBody(r.Method), nil)
+func handleMethodNotAllowed(log trace.Logger) func(rw http.ResponseWriter, r *http.Request) {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		rest.SendErrorMethodNotAllowed(r.Context(), r.Method, rw, log)
+	}
 }
 
 func printRoutes(ctx context.Context, r *chi.Mux, logger trace.Logger) {

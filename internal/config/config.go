@@ -8,6 +8,33 @@ import (
 	"strings"
 )
 
+type (
+	API struct {
+		Dev  bool `json:"dev"`
+		Port int  `json:"port"`
+		CORS CORS `json:"cors"`
+		DB   DB   `json:"db"`
+	}
+	Web struct {
+		Dev             bool   `json:"dev"`
+		Port            int    `json:"port"`
+		StaticFilesPath string `json:"static_files_path"`
+		APIHost         string `json:"api_host"`
+	}
+	CORS struct {
+		AllowOrigin      string   `json:"allow_origin"`
+		AllowMethods     []string `json:"allow_methods"`
+		AllowHeaders     []string `json:"allow_headers"`
+		ExposeHeaders    []string `json:"expose_headers"`
+		MaxAge           int      `json:"max_age"`
+		AllowCredentials bool     `json:"allow_credentials"`
+	}
+
+	DB struct {
+		Path string `yaml:"path"`
+	}
+)
+
 func NewWeb(confPath string) (Web, error) {
 	var res Web
 	if err := readConfig(confPath, &res); err != nil {
@@ -23,33 +50,6 @@ func NewAPI(confPath string) (API, error) {
 	}
 
 	return api, validateAPI(api)
-}
-
-type Web struct {
-	Dev             bool   `json:"dev"`
-	Port            int    `json:"port"`
-	StaticFilesPath string `json:"static_files_path"`
-	APIHost         string `json:"api_host"`
-}
-
-type API struct {
-	Dev  bool `json:"dev"`
-	Port int  `json:"port"`
-	CORS CORS `json:"cors"`
-	DB   DB   `json:"db"`
-}
-
-type CORS struct {
-	AllowOrigin      string   `json:"allow_origin"`
-	AllowMethods     []string `json:"allow_methods"`
-	AllowHeaders     []string `json:"allow_headers"`
-	ExposeHeaders    []string `json:"expose_headers"`
-	MaxAge           int      `json:"max_age"`
-	AllowCredentials bool     `json:"allow_credentials"`
-}
-
-type DB struct {
-	Path string `yaml:"path"`
 }
 
 func readConfig(path string, target any) error {
@@ -73,35 +73,35 @@ func readConfig(path string, target any) error {
 }
 
 func validateWeb(conf Web) error {
-	errors := make([]string, 0, 3)
+	res := make([]string, 0, 3)
 	if conf.Port <= 0 || conf.Port > 65535 {
 		return fmt.Errorf("invalid port: %d", conf.Port)
 	}
 	if conf.StaticFilesPath == "" {
-		errors = append(errors, "empty static files path")
+		res = append(res, "empty static files path")
 	}
 	if conf.APIHost == "" {
-		errors = append(errors, "empty api host")
+		res = append(res, "empty api host")
 	}
 
-	if len(errors) != 0 {
-		return fmt.Errorf("invalid web config: [%s]", strings.Join(errors, "; "))
+	if len(res) != 0 {
+		return fmt.Errorf("invalid web config: [%s]", strings.Join(res, "; "))
 	}
 
 	return nil
 }
 
 func validateAPI(api API) error {
-	errors := make([]string, 0, 2)
+	res := make([]string, 0, 2)
 	if api.Port <= 0 || api.Port > 65535 {
 		return fmt.Errorf("invalid port: %d", api.Port)
 	}
 	if api.DB.Path == "" {
-		errors = append(errors, "empty data path")
+		res = append(res, "empty data path")
 	}
 
-	if len(errors) != 0 {
-		return fmt.Errorf("invalid api config: [%s]", strings.Join(errors, "; "))
+	if len(res) != 0 {
+		return fmt.Errorf("invalid api config: [%s]", strings.Join(res, "; "))
 	}
 
 	return nil

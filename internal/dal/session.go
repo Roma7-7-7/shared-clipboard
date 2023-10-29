@@ -19,8 +19,8 @@ var (
 )
 
 type Session struct {
-	SessionID string `json:"session_id"`
-	LastUsed  int64  `json:"last_used"`
+	SessionID string    `json:"session_id"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type SessionRepository struct {
@@ -62,7 +62,7 @@ func (r *SessionRepository) Get(key string) (*Session, error) {
 func (r *SessionRepository) Create() (*Session, error) {
 	s := &Session{
 		SessionID: newID(),
-		LastUsed:  time.Now().UnixMicro(),
+		UpdatedAt: time.Now(),
 	}
 
 	if err := r.db.Update(func(txn *badger.Txn) error {

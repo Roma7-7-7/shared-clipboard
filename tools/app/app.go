@@ -2,50 +2,35 @@ package app
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"go.uber.org/zap"
+	"github.com/pkg/errors"
 
-	"github.com/Roma7-7-7/shared-clipboard/internal/config"
-	"github.com/Roma7-7-7/shared-clipboard/internal/handler/web"
 	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
 type App struct {
-	conf config.Web
+	port int
 	mux  *chi.Mux
 	log  trace.Logger
 }
 
-func New(ctx context.Context, conf config.Web, l *zap.SugaredLogger) (*App, error) {
-	var (
-		h   *chi.Mux
-		err error
-	)
-
-	log := trace.NewSugaredLogger(l.With("service", "web"))
-
-	log.Infow(ctx, "Creating router")
-	if h, err = web.NewRouter(ctx, conf, log); err != nil {
-		return nil, fmt.Errorf("create router: %w", err)
-	}
-
+func New(port int, mux *chi.Mux, log trace.Logger) *App {
 	return &App{
-		conf: conf,
-		mux:  h,
+		port: port,
+		mux:  mux,
 		log:  log,
-	}, nil
+	}
 }
 
 func (a *App) Run(ctx context.Context) error {
 	done := make(chan struct{})
 	defer close(done)
 
-	addr := fmt.Sprintf(":%d", a.conf.Port)
+	addr := fmt.Sprintf(":%d", a.port)
 	s := http.Server{
 		Addr:        addr,
 		Handler:     a.mux,

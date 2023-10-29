@@ -8,27 +8,27 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/Roma7-7-7/shared-clipboard/cmd/web/app"
+	"github.com/Roma7-7-7/shared-clipboard/internal/app"
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
 	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
-var configPath = flag.String("config", "web.json", "path to config file")
+var configPath = flag.String("config", "", "path to config file")
 
 func main() {
 	flag.Parse()
 
 	var (
 		ctx, cancel = context.WithTimeout(context.Background(), 1*time.Minute)
-		conf        config.Web
+		conf        config.API
 		l           *zap.Logger
-		a           *app.App
+		a           *app.API
 		err         error
 	)
 	defer cancel()
 	ctx = trace.WithTraceID(ctx, "bootstrap")
 
-	if conf, err = config.NewWeb(*configPath); err != nil {
+	if conf, err = config.NewAPI(*configPath); err != nil {
 		stdLog.Fatalf("create config: %v", err)
 	}
 
@@ -42,7 +42,7 @@ func main() {
 		}
 	}
 
-	if a, err = app.New(ctx, conf, l.Sugar()); err != nil {
+	if a, err = app.NewAPI(ctx, conf, l.Sugar()); err != nil {
 		stdLog.Fatalf("create app: %v", err)
 	}
 

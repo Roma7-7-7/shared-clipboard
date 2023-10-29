@@ -14,17 +14,17 @@ clean:
 # Build web
 build-web:
 	rm -rf ./bin/web
-	go build -o bin/web ./cmd/web/web.go
+	go build -o bin/web ./cmd/web/main.go
 
 # Build api
 build-api:
 	rm -rf ./bin/api
-	go build -o bin/api ./cmd/api/api.go
+	go build -o bin/api ./cmd/api/main.go
 
 # Build dev
 build-dev:
 	rm -rf ./bin/dev
-	go build -o bin/dev ./cmd/dev/dev.go
+	go build -o bin/dev ./cmd/dev/main.go
 
 # Build all
 build-all: build-web build-api build-dev

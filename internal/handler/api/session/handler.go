@@ -1,4 +1,4 @@
-package api
+package session
 
 import (
 	"errors"
@@ -7,35 +7,34 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/Roma7-7-7/shared-clipboard/internal/dal"
-	"github.com/Roma7-7-7/shared-clipboard/internal/handler"
+	"github.com/Roma7-7-7/shared-clipboard/tools/rest"
 	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
-type SessionRepository interface {
+type Repository interface {
 	Get(id string) (*dal.Session, error)
 	Create() (*dal.Session, error)
 }
 
-type Service struct {
-	sessionRepo SessionRepository
+type Handler struct {
+	sessionRepo Repository
 
 	log trace.Logger
 }
 
-func NewSessionHandler(sessionRepo SessionRepository, log trace.Logger) *Service {
-	return &Service{
+func NewSessionHandler(sessionRepo Repository, log trace.Logger) *Handler {
+	return &Handler{
 		sessionRepo: sessionRepo,
-
-		log: log,
+		log:         log,
 	}
 }
 
-func (s *Service) RegisterRoutes(r chi.Router) {
+func (s *Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/", s.Create)
 	r.Get("/{id}", s.Get)
 }
 
-func (s *Service) Create(rw http.ResponseWriter, r *http.Request) {
+func (s *Handler) Create(rw http.ResponseWriter, r *http.Request) {
 	var (
 		session *dal.Session
 		body    []byte
@@ -44,21 +43,21 @@ func (s *Service) Create(rw http.ResponseWriter, r *http.Request) {
 
 	if session, err = s.sessionRepo.Create(); err != nil {
 		s.log.Errorw(r.Context(), "failed to create session", err)
-		sendInternalServerError(r.Context(), rw, s.log)
+		rest.SendInternalServerError(r.Context(), rw, s.log)
 		return
 	}
 
 	s.log.Debugw(r.Context(), "Created session", "id", session.SessionID)
-	if body, err = handler.ToJSON(session); err != nil {
+	if body, err = rest.ToJSON(session); err != nil {
 		s.log.Errorw(r.Context(), "failed to marshal session", err)
-		sendErrorMarshalBody(r.Context(), rw, s.log)
+		rest.SendErrorMarshalBody(r.Context(), rw, s.log)
 		return
 	}
 
-	handler.Send(r.Context(), rw, http.StatusCreated, handler.ContentTypeJSON, body, s.log)
+	rest.Send(r.Context(), rw, http.StatusCreated, rest.ContentTypeJSON, body, s.log)
 }
 
-func (s *Service) Get(rw http.ResponseWriter, r *http.Request) {
+func (s *Handler) Get(rw http.ResponseWriter, r *http.Request) {
 	var (
 		sessionID string
 		session   *dal.Session
@@ -71,21 +70,21 @@ func (s *Service) Get(rw http.ResponseWriter, r *http.Request) {
 	if session, err = s.sessionRepo.Get(sessionID); err != nil {
 		if errors.Is(err, dal.ErrNotFound) {
 			s.log.Debugw(r.Context(), "session not found", "id", sessionID)
-			sendNotFound(r.Context(), rw, s.log)
+			rest.SendNotFound(r.Context(), rw, s.log)
 			return
 		}
 
 		s.log.Errorw(r.Context(), "failed to get session", err)
-		sendInternalServerError(r.Context(), rw, s.log)
+		rest.SendInternalServerError(r.Context(), rw, s.log)
 		return
 	}
 
 	s.log.Debugw(r.Context(), "Got session", "id", session.SessionID)
-	if body, err = handler.ToJSON(session); err != nil {
+	if body, err = rest.ToJSON(session); err != nil {
 		s.log.Errorw(r.Context(), "failed to marshal session", err)
-		sendErrorMarshalBody(r.Context(), rw, s.log)
+		rest.SendErrorMarshalBody(r.Context(), rw, s.log)
 		return
 	}
 
-	handler.Send(r.Context(), rw, http.StatusOK, handler.ContentTypeJSON, body, s.log)
+	rest.Send(r.Context(), rw, http.StatusOK, rest.ContentTypeJSON, body, s.log)
 }

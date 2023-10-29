@@ -14,6 +14,7 @@ import (
 
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
 	"github.com/Roma7-7-7/shared-clipboard/internal/handler"
+	http2 "github.com/Roma7-7-7/shared-clipboard/tools/rest"
 	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
@@ -60,7 +61,7 @@ func (e envJson) Handle(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rw.Header().Set(handler.ContentTypeHeader, handler.ContentTypeJavaScript)
+	rw.Header().Set(http2.ContentTypeHeader, http2.ContentTypeJavaScript)
 	rw.Header().Set("Last-Modified", e.lastModified)
 	if _, err := rw.Write([]byte(e.response)); err != nil {
 		e.log.Errorw(r.Context(), "Failed to write response", err)

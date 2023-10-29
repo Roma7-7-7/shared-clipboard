@@ -9,8 +9,7 @@ import (
 
 	"go.uber.org/zap"
 
-	apiApp "github.com/Roma7-7-7/shared-clipboard/cmd/api/app"
-	webApp "github.com/Roma7-7-7/shared-clipboard/cmd/web/app"
+	"github.com/Roma7-7-7/shared-clipboard/internal/app"
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
 	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
@@ -23,9 +22,9 @@ func main() {
 
 	var (
 		apiConf config.API
-		api     *apiApp.App
+		api     *app.API
 		webConf config.Web
-		web     *webApp.App
+		web     *app.Web
 		l       *zap.Logger
 		log     *zap.SugaredLogger
 		err     error
@@ -52,10 +51,10 @@ func main() {
 	}
 	log = l.Sugar()
 
-	if api, err = apiApp.New(ctx, apiConf, log); err != nil {
+	if api, err = app.NewAPI(ctx, apiConf, log); err != nil {
 		log.Fatalf("failed to create api app: %s", err)
 	}
-	if web, err = webApp.New(ctx, webConf, log); err != nil {
+	if web, err = app.NewWeb(ctx, webConf, log); err != nil {
 		log.Fatalf("failed to create web app: %s", err)
 	}
 
