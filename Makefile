@@ -27,7 +27,7 @@ build-dev:
 	go build -o bin/dev/dev ./cmd/dev/dev.go
 
 # Build all
-build-all: build-web build-api
+build-all: build-web build-api build-dev
 
 # Run web
 run-web: build-web
