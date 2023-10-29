@@ -33,7 +33,7 @@ type (
 
 func NewSugaredLogger(logger *zap.SugaredLogger) *SugaredLogger {
 	return &SugaredLogger{
-		log: logger,
+		log: logger.WithOptions(zap.AddCallerSkip(1)),
 	}
 }
 
@@ -73,9 +73,10 @@ func (l *SugaredLogger) Errorw(ctx context.Context, msg string, keysAndValues ..
 	}
 }
 
-func NewBadgerLogger(log Logger) badger.Logger {
+func NewBadgerLogger(log *SugaredLogger) badger.Logger {
 	return &BadgerLogger{
-		log: log,
+		// we need to increase caller skip because of this wrapper calls other wrapper
+		log: &SugaredLogger{log.log.WithOptions(zap.AddCallerSkip(1))},
 	}
 }
 

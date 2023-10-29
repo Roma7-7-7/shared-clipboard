@@ -41,14 +41,15 @@ func main() {
 			stdLog.Fatalf("create logger: %s", err)
 		}
 	}
+	sLog := l.Sugar()
 
-	if a, err = app.NewAPI(ctx, conf, l.Sugar()); err != nil {
-		stdLog.Fatalf("create app: %v", err)
+	if a, err = app.NewAPI(ctx, conf, trace.NewSugaredLogger(sLog)); err != nil {
+		sLog.Fatalw("Create app", err)
 	}
 
 	runCtx, runCancel := context.WithCancel(ctx)
 	defer runCancel()
 	if err = a.Run(trace.WithTraceID(runCtx, "run")); err != nil {
-		stdLog.Fatalf("start web: %s", err)
+		sLog.Fatalw("Start API", err)
 	}
 }

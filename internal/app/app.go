@@ -6,7 +6,6 @@ import (
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/go-chi/chi/v5"
-	"go.uber.org/zap"
 
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
 	"github.com/Roma7-7-7/shared-clipboard/internal/dal"
@@ -25,14 +24,12 @@ type (
 	}
 )
 
-func NewAPI(ctx context.Context, conf config.API, l *zap.SugaredLogger) (*API, error) {
+func NewAPI(ctx context.Context, conf config.API, log *trace.SugaredLogger) (*API, error) {
 	var (
 		db  *badger.DB
 		h   *chi.Mux
 		err error
 	)
-
-	log := trace.NewSugaredLogger(l.With("service", "api"))
 
 	log.Infow(ctx, "Initializing DB")
 	badgerOpts := badger.DefaultOptions(conf.DB.Path)
@@ -51,13 +48,11 @@ func NewAPI(ctx context.Context, conf config.API, l *zap.SugaredLogger) (*API, e
 	}, nil
 }
 
-func NewWeb(ctx context.Context, conf config.Web, l *zap.SugaredLogger) (*Web, error) {
+func NewWeb(ctx context.Context, conf config.Web, log trace.Logger) (*Web, error) {
 	var (
 		h   *chi.Mux
 		err error
 	)
-
-	log := trace.NewSugaredLogger(l.With("service", "web"))
 
 	log.Infow(ctx, "Creating router")
 	if h, err = web.NewRouter(ctx, conf, log); err != nil {

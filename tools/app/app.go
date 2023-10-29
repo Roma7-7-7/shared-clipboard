@@ -48,6 +48,7 @@ func (a *App) Run(ctx context.Context) error {
 			if err := s.Shutdown(ctx); err != nil {
 				a.log.Errorw(ctx, "Shutdown server", err)
 			}
+			a.log.Infow(ctx, "Server stopped")
 			return
 		}
 	}()
@@ -56,6 +57,7 @@ func (a *App) Run(ctx context.Context) error {
 	if err := s.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("server listen: %w", err)
 	}
+	a.log.Infow(ctx, "Server stopped")
 
 	return nil
 }

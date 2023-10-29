@@ -26,13 +26,13 @@ func main() {
 		webConf config.Web
 		web     *app.Web
 		l       *zap.Logger
-		log     *zap.SugaredLogger
+		sLog    *zap.SugaredLogger
 		err     error
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
-	ctx = trace.WithTraceID(ctx, "bootstrap")
+	bootstrapCtx, bootstrapCancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer bootstrapCancel()
+	bootstrapCtx = trace.WithTraceID(bootstrapCtx, "bootstrap")
 
 	if apiConf, err = config.NewAPI(*apiConfigPath); err != nil {
 		stdLog.Fatalf("create api config: %v", err)
@@ -49,35 +49,38 @@ func main() {
 	if l, err = zap.NewDevelopment(); err != nil {
 		stdLog.Fatalf("create logger: %s", err)
 	}
-	log = l.Sugar()
+	sLog = l.Sugar()
+	apiLog := trace.NewSugaredLogger(sLog.With("service", "api"))
+	webLog := trace.NewSugaredLogger(sLog.With("service", "web"))
 
-	if api, err = app.NewAPI(ctx, apiConf, log); err != nil {
-		log.Fatalf("failed to create api app: %s", err)
+	if api, err = app.NewAPI(bootstrapCtx, apiConf, apiLog); err != nil {
+		sLog.Fatalf("failed to create api app: %s", err)
 	}
-	if web, err = app.NewWeb(ctx, webConf, log); err != nil {
-		log.Fatalf("failed to create web app: %s", err)
+	if web, err = app.NewWeb(bootstrapCtx, webConf, webLog); err != nil {
+		sLog.Fatalf("failed to create web app: %s", err)
 	}
 
-	runCtx, cancelRun := context.WithCancel(context.Background())
-	defer cancelRun()
+	runCtx, runCancel := context.WithCancel(context.Background())
+	defer runCancel()
 	runCtx = trace.WithTraceID(runCtx, "run")
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
+		defer runCancel()
 		if err := api.Run(runCtx); err != nil {
-			log.Errorw("api app failed", err)
-			cancelRun()
+			sLog.Errorw("API run failed", err)
 		}
 	}()
 	go func() {
 		defer wg.Done()
+		defer runCancel()
 		if err := web.Run(runCtx); err != nil {
-			log.Errorw("web app failed", err)
-			cancelRun()
+			sLog.Errorw("Web run failed", err)
 		}
 	}()
 
 	wg.Wait()
+	sLog.Infow("All apps stopped")
 }
