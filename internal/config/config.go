@@ -1,60 +1,39 @@
 package config
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
-
-	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
-func NewWeb(ctx context.Context, dev bool, confPath string, log trace.Logger) (Web, error) {
+func NewWeb(confPath string) (Web, error) {
 	var res Web
 	if err := readConfig(confPath, &res); err != nil {
 		return res, fmt.Errorf("read config: %w", err)
 	}
-	if dev {
-		if res.StaticFilesPath == "" {
-			res.StaticFilesPath = "web"
-			log.Debugw(ctx, "dev mode is on, setting default static files path", "path", res.StaticFilesPath)
-		}
-		if res.APIHost == "" {
-			log.Debugw(ctx, "dev mode is on, setting default api host", "host", "http://localhost:8080")
-			res.APIHost = "http://localhost:8080"
-		}
-	}
 	return res, validateWeb(res)
 }
 
-func NewAPI(ctx context.Context, dev bool, confPath string, log trace.Logger) (API, error) {
+func NewAPI(confPath string) (API, error) {
 	var api API
 	if err := readConfig(confPath, &api); err != nil {
 		return api, fmt.Errorf("read config: %w", err)
 	}
 
-	if dev {
-		if api.Port == 0 {
-			api.Port = 8080
-			log.Debugw(ctx, "dev mode is on, setting default port", "port", api.Port)
-		}
-		if api.DB.Path == "" {
-			api.DB.Path = "data"
-			log.Debugw(ctx, "dev mode is on, setting default data path", "path", api.DB.Path)
-		}
-	}
 	return api, validateAPI(api)
 }
 
 type Web struct {
+	Dev             bool   `json:"dev"`
 	Port            int    `json:"port"`
 	StaticFilesPath string `json:"static_files_path"`
 	APIHost         string `json:"api_host"`
 }
 
 type API struct {
+	Dev  bool `json:"dev"`
 	Port int  `json:"port"`
 	CORS CORS `json:"cors"`
 	DB   DB   `json:"db"`

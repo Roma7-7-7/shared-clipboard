@@ -26,40 +26,37 @@ func NewSugaredLogger(logger *zap.SugaredLogger) *SugaredLogger {
 }
 
 func (l *SugaredLogger) Debugw(ctx context.Context, msg string, keysAndValues ...interface{}) {
-	l.log.Debugw(msg, withTraceIDFromContext(ctx, keysAndValues)...)
+	log := l.log.With(traceIDLogKey, ID(ctx))
+	if len(keysAndValues) > 0 {
+		log.Debugw(msg, keysAndValues...)
+	} else {
+		log.Debug(msg)
+	}
 }
 
 func (l *SugaredLogger) Infow(ctx context.Context, msg string, keysAndValues ...interface{}) {
-	l.log.Infow(msg, withTraceIDFromContext(ctx, keysAndValues)...)
+	log := l.log.With(traceIDLogKey, ID(ctx))
+	if len(keysAndValues) > 0 {
+		log.Infow(msg, keysAndValues...)
+	} else {
+		log.Info(msg)
+	}
 }
 
 func (l *SugaredLogger) Warnw(ctx context.Context, msg string, keysAndValues ...interface{}) {
-	l.log.Warnw(msg, withTraceIDFromContext(ctx, keysAndValues)...)
+	log := l.log.With(traceIDLogKey, ID(ctx))
+	if len(keysAndValues) > 0 {
+		log.Warnw(msg, keysAndValues...)
+	} else {
+		log.Warn(msg)
+	}
 }
 
 func (l *SugaredLogger) Errorw(ctx context.Context, msg string, keysAndValues ...interface{}) {
-	l.log.Errorw(msg, withTraceIDFromContext(ctx, keysAndValues)...)
-}
-
-func withTraceIDFromContext(ctx context.Context, keysAndValues []interface{}) []interface{} {
-	return withTraceID(ID(ctx), keysAndValues)
-}
-
-func withTraceID(traceID string, keysAndValues []interface{}) []interface{} {
-	if hasRequestID(keysAndValues...) {
-		return keysAndValues
+	log := l.log.With(traceIDLogKey, ID(ctx))
+	if len(keysAndValues) > 0 {
+		log.Errorw(msg, keysAndValues...)
+	} else {
+		log.Error(msg)
 	}
-	return append(keysAndValues, traceIDLogKey, traceID)
-}
-
-func hasRequestID(keysAndValues ...interface{}) bool {
-	for i, key := range keysAndValues {
-		if i%2 == 0 && key == traceIDLogKey && len(keysAndValues) > i+1 {
-			if value, ok := keysAndValues[i+1].(string); ok && value != "" {
-				return true
-			}
-		}
-	}
-
-	return false
 }

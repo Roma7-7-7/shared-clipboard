@@ -32,7 +32,6 @@ func Logger(l trace.Logger) func(next http.Handler) http.Handler {
 					"method", r.Method,
 					"url", r.URL.String(),
 					"proto", r.Proto,
-					"remoteAddr", r.RemoteAddr,
 					"status", ww.Status(),
 					"bytes", ww.BytesWritten(),
 					"duration", time.Since(started))

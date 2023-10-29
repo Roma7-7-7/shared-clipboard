@@ -1,5 +1,5 @@
 redirectOnClick(document.querySelector(".navbar h1"), "/")
-redirectOnClick(document.getElementById("initButton"), "/init.html");
+redirectOnClick(document.getElementById("startButton"), "/start.html");
 redirectOnClick(document.getElementById("homeButton"), "/");
 redirectOnClick(document.getElementById("joinButton"), "/join.html");
 

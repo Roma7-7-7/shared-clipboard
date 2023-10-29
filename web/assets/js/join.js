@@ -3,7 +3,13 @@ const sessionIDInput = document.getElementById('sessionIDInput');
 
 sessionIDInput.addEventListener('input', function () {
     proceedButton.disabled = sessionIDInput.value.length <= 0;
-})
+});
+
+sessionIDInput.addEventListener('keyup', function (event) {
+    if (event.key === 'Enter') {
+        proceedButton.click()
+    }
+});
 
 proceedButton.addEventListener('click', function () {
     fetch(apiHost + '/sessions/' + sessionIDInput.value)
@@ -19,4 +25,4 @@ proceedButton.addEventListener('click', function () {
             }
         })
         .catch(redirectError)
-})
+});

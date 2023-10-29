@@ -2,78 +2,53 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
-	"fmt"
-	stdlog "log"
-	"net/http"
-	"os"
+	stdLog "log"
 	"time"
 
-	"github.com/dgraph-io/badger/v4"
-	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 
+	"github.com/Roma7-7-7/shared-clipboard/cmd/api/app"
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
-	"github.com/Roma7-7-7/shared-clipboard/internal/dal"
-	"github.com/Roma7-7-7/shared-clipboard/internal/handler/api"
 	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
-var dev = flag.Bool("dev", false, "development mode")
 var configPath = flag.String("config", "", "path to config file")
 
 func main() {
 	flag.Parse()
 
 	var (
-		bootstrapCtx, cancel = context.WithTimeout(context.Background(), 1*time.Minute)
-		l                    *zap.Logger
-		log                  trace.Logger
-		conf                 config.API
-		db                   *badger.DB
-		h                    *chi.Mux
-		err                  error
+		ctx, cancel = context.WithTimeout(context.Background(), 1*time.Minute)
+		conf        config.API
+		l           *zap.Logger
+		a           *app.App
+		err         error
 	)
 	defer cancel()
-	bootstrapCtx = trace.WithTraceID(bootstrapCtx, "bootstrap")
+	ctx = trace.WithTraceID(ctx, "bootstrap")
 
-	if *dev {
+	if conf, err = config.NewAPI(*configPath); err != nil {
+		stdLog.Fatalf("create config: %v", err)
+	}
+
+	if conf.Dev {
 		if l, err = zap.NewDevelopment(); err != nil {
-			stdlog.Fatalf("create logger: %v", err)
+			stdLog.Fatalf("create logger: %s", err)
 		}
 	} else {
 		if l, err = zap.NewProduction(); err != nil {
-			stdlog.Fatalf("create logger: %v", err)
+			stdLog.Fatalf("create logger: %s", err)
 		}
 	}
-	log = trace.NewSugaredLogger(l.Sugar())
 
-	if conf, err = config.NewAPI(bootstrapCtx, *dev, *configPath, log); err != nil {
-		log.Errorw(bootstrapCtx, "create config", err)
-		os.Exit(1)
+	if a, err = app.New(ctx, conf, l.Sugar()); err != nil {
+		stdLog.Fatalf("create app: %v", err)
 	}
 
-	log.Infow(bootstrapCtx, "Initializing DB")
-	if db, err = badger.Open(badger.DefaultOptions(conf.DB.Path)); err != nil {
-		log.Errorw(bootstrapCtx, "open db", zap.Error(err))
-		os.Exit(1)
-	}
-
-	log.Infow(bootstrapCtx, "Creating router")
-	if h, err = api.NewRouter(bootstrapCtx, dal.NewSessionRepository(db), conf, log); err != nil {
-		log.Errorw(bootstrapCtx, "create router", err)
-		os.Exit(1)
-	}
-
-	addr := fmt.Sprintf(":%d", conf.Port)
-	s := http.Server{
-		Addr:        addr,
-		Handler:     h,
-		ReadTimeout: 30 * time.Second,
-	}
-	log.Infow(bootstrapCtx, "Starting server", "address", addr)
-	if err = s.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-		log.Errorw(trace.WithTraceID(context.Background(), "termination"), "server listen error", err)
+	runCtx, runCancel := context.WithCancel(ctx)
+	defer runCancel()
+	if err = a.Run(trace.WithTraceID(runCtx, "run")); err != nil {
+		stdLog.Fatalf("start web: %s", err)
 	}
 }

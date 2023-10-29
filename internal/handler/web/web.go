@@ -23,7 +23,9 @@ func NewRouter(ctx context.Context, conf config.Web, log trace.Logger) (*chi.Mux
 	r := chi.NewRouter()
 
 	r.Use(handler.TraceID)
-	r.Use(handler.Logger(log))
+	if conf.Dev {
+		r.Use(handler.Logger(log))
+	}
 	r.Use(httprate.LimitByIP(10, 1*time.Second))
 	r.Use(middleware.RedirectSlashes)
 	r.Use(middleware.Recoverer)
