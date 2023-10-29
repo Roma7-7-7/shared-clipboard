@@ -35,7 +35,9 @@ func NewAPI(ctx context.Context, conf config.API, l *zap.SugaredLogger) (*API, e
 	log := trace.NewSugaredLogger(l.With("service", "api"))
 
 	log.Infow(ctx, "Initializing DB")
-	if db, err = badger.Open(badger.DefaultOptions(conf.DB.Path)); err != nil {
+	badgerOpts := badger.DefaultOptions(conf.DB.Path)
+	badgerOpts.Logger = trace.NewBadgerLogger(log)
+	if db, err = badger.Open(badgerOpts); err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
 

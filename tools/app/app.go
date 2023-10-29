@@ -42,7 +42,7 @@ func (a *App) Run(ctx context.Context) error {
 		case <-done:
 			return
 		case <-ctx.Done():
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			ctx, cancel := context.WithTimeout(trace.WithTraceID(context.Background(), "shutdown"), 30*time.Second)
 			defer cancel()
 			a.log.Infow(ctx, "Shutting down server")
 			if err := s.Shutdown(ctx); err != nil {

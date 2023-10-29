@@ -2,22 +2,34 @@ package trace
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
+	"github.com/dgraph-io/badger/v4"
 	"go.uber.org/zap"
 )
 
-const traceIDLogKey = "traceID"
+const (
+	traceIDLogKey = "traceID"
+	badgerTraceID = "badger"
+)
 
-type Logger interface {
-	Debugw(ctx context.Context, msg string, keysAndValues ...interface{})
-	Infow(ctx context.Context, msg string, keysAndValues ...interface{})
-	Warnw(ctx context.Context, msg string, keysAndValues ...interface{})
-	Errorw(ctx context.Context, msg string, keysAndValues ...interface{})
-}
+type (
+	Logger interface {
+		Debugw(ctx context.Context, msg string, keysAndValues ...interface{})
+		Infow(ctx context.Context, msg string, keysAndValues ...interface{})
+		Warnw(ctx context.Context, msg string, keysAndValues ...interface{})
+		Errorw(ctx context.Context, msg string, keysAndValues ...interface{})
+	}
 
-type SugaredLogger struct {
-	log *zap.SugaredLogger
-}
+	SugaredLogger struct {
+		log *zap.SugaredLogger
+	}
+
+	BadgerLogger struct {
+		log Logger
+	}
+)
 
 func NewSugaredLogger(logger *zap.SugaredLogger) *SugaredLogger {
 	return &SugaredLogger{
@@ -59,4 +71,30 @@ func (l *SugaredLogger) Errorw(ctx context.Context, msg string, keysAndValues ..
 	} else {
 		log.Error(msg)
 	}
+}
+
+func NewBadgerLogger(log Logger) badger.Logger {
+	return &BadgerLogger{
+		log: log,
+	}
+}
+
+func (l *BadgerLogger) Debugf(format string, v ...interface{}) {
+	l.log.Debugw(backgroundContextWithBadgerTraceID(), fmt.Sprintf(strings.TrimSuffix(format, "\n"), v...))
+}
+
+func (l *BadgerLogger) Infof(format string, v ...interface{}) {
+	l.log.Infow(backgroundContextWithBadgerTraceID(), fmt.Sprintf(strings.TrimSuffix(format, "\n"), v...))
+}
+
+func (l *BadgerLogger) Warningf(format string, v ...interface{}) {
+	l.log.Warnw(backgroundContextWithBadgerTraceID(), fmt.Sprintf(strings.TrimSuffix(format, "\n"), v...))
+}
+
+func (l *BadgerLogger) Errorf(format string, v ...interface{}) {
+	l.log.Errorw(backgroundContextWithBadgerTraceID(), fmt.Sprintf(strings.TrimSuffix(format, "\n"), v...))
+}
+
+func backgroundContextWithBadgerTraceID() context.Context {
+	return WithTraceID(context.Background(), badgerTraceID)
 }
