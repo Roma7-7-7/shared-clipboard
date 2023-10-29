@@ -7,17 +7,21 @@ import (
 )
 
 type ZapBadgerLogger struct {
-	log *zap.SugaredLogger
+	debug bool
+	log   *zap.SugaredLogger
 }
 
-func NewZapBadger(log *zap.SugaredLogger) *ZapBadgerLogger {
+func NewZapBadger(debug bool, log *zap.SugaredLogger) *ZapBadgerLogger {
 	return &ZapBadgerLogger{
-		log: log.WithOptions(zap.AddCallerSkip(1)),
+		debug: debug,
+		log:   log.WithOptions(zap.AddCallerSkip(1)),
 	}
 }
 
 func (l *ZapBadgerLogger) Debugf(format string, v ...interface{}) {
-	l.log.Debugf(strings.TrimSuffix(format, "\n"), v...)
+	if l.debug {
+		l.log.Debugf(strings.TrimSuffix(format, "\n"), v...)
+	}
 }
 
 func (l *ZapBadgerLogger) Infof(format string, v ...interface{}) {

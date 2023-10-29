@@ -42,7 +42,7 @@ func main() {
 	sLog := l.Sugar()
 	traced := log.NewZapTracedLogger(sLog)
 
-	if a, err = cmd.NewAPI(conf, traced, log.NewZapBadger(sLog)); err != nil {
+	if a, err = cmd.NewAPI(conf, traced, log.NewZapBadger(conf.DB.Debug, sLog)); err != nil {
 		traced.Errorw(trace.RuntimeTraceID, "Create app", err)
 		os.Exit(1)
 	}

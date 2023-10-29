@@ -48,7 +48,7 @@ func main() {
 	}
 	sLog = l.Sugar()
 	traced := log.NewZapTracedLogger(sLog)
-	if api, err = cmd.NewAPI(apiConf, log.NewZapTracedLogger(sLog.With("service", "api")), log.NewZapBadger(sLog)); err != nil {
+	if api, err = cmd.NewAPI(apiConf, log.NewZapTracedLogger(sLog.With("service", "api")), log.NewZapBadger(apiConf.DB.Debug, sLog)); err != nil {
 		traced.Errorw(trace.RuntimeTraceID, "failed to create api app: %s", err)
 		os.Exit(1)
 	}
