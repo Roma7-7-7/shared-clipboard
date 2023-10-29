@@ -4,12 +4,14 @@ import (
 	"context"
 	"flag"
 	stdLog "log"
+	"os"
 	"time"
 
 	"go.uber.org/zap"
 
-	"github.com/Roma7-7-7/shared-clipboard/internal/app"
+	"github.com/Roma7-7-7/shared-clipboard/cmd"
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
+	"github.com/Roma7-7-7/shared-clipboard/tools/log"
 	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
@@ -22,11 +24,11 @@ func main() {
 		ctx, cancel = context.WithTimeout(context.Background(), 1*time.Minute)
 		conf        config.Web
 		l           *zap.Logger
-		a           *app.Web
+		a           *cmd.Web
 		err         error
 	)
 	defer cancel()
-	ctx = trace.WithTraceID(ctx, "bootstrap")
+	ctx = trace.WithID(ctx, "bootstrap")
 
 	if conf, err = config.NewWeb(*configPath); err != nil {
 		stdLog.Fatalf("create config: %v", err)
@@ -41,15 +43,15 @@ func main() {
 			stdLog.Fatalf("create logger: %s", err)
 		}
 	}
-	sLog := l.Sugar()
+	traced := log.NewZapTracedLogger(l.Sugar())
 
-	if a, err = app.NewWeb(ctx, conf, trace.NewSugaredLogger(sLog)); err != nil {
-		sLog.Fatalw("create app", err)
+	if a, err = cmd.NewWeb(conf, traced); err != nil {
+		traced.Errorw(trace.RuntimeTraceID, "Create app", err)
+		os.Exit(1)
 	}
 
-	runCtx, runCancel := context.WithCancel(ctx)
-	defer runCancel()
-	if err = a.Run(trace.WithTraceID(runCtx, "run")); err != nil {
-		sLog.Fatal("Start web", err)
+	if err = a.Run(context.Background()); err != nil {
+		traced.Errorw(trace.RuntimeTraceID, "Run", err)
+		os.Exit(1)
 	}
 }

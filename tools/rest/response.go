@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/Roma7-7-7/shared-clipboard/tools/log"
 	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
@@ -24,10 +25,10 @@ func ToJSON(data any) ([]byte, error) {
 	return marshal, err
 }
 
-func Send(ctx context.Context, rw http.ResponseWriter, status int, contentType string, body []byte, log trace.Logger) {
+func Send(ctx context.Context, rw http.ResponseWriter, status int, contentType string, body []byte, log log.TracedLogger) {
 	rw.Header().Set(ContentTypeHeader, contentType)
 	rw.WriteHeader(status)
 	if _, err := rw.Write(body); err != nil {
-		log.Errorw(ctx, "Failed to write response", err)
+		log.Errorw(trace.ID(ctx), "Failed to write response", err)
 	}
 }

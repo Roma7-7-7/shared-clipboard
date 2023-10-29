@@ -4,12 +4,13 @@ import (
 	"context"
 	"flag"
 	stdLog "log"
-	"time"
+	"os"
 
 	"go.uber.org/zap"
 
-	"github.com/Roma7-7-7/shared-clipboard/internal/app"
+	"github.com/Roma7-7-7/shared-clipboard/cmd"
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
+	"github.com/Roma7-7-7/shared-clipboard/tools/log"
 	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
@@ -19,14 +20,11 @@ func main() {
 	flag.Parse()
 
 	var (
-		ctx, cancel = context.WithTimeout(context.Background(), 1*time.Minute)
-		conf        config.API
-		l           *zap.Logger
-		a           *app.API
-		err         error
+		conf config.API
+		l    *zap.Logger
+		a    *cmd.API
+		err  error
 	)
-	defer cancel()
-	ctx = trace.WithTraceID(ctx, "bootstrap")
 
 	if conf, err = config.NewAPI(*configPath); err != nil {
 		stdLog.Fatalf("create config: %v", err)
@@ -42,14 +40,15 @@ func main() {
 		}
 	}
 	sLog := l.Sugar()
+	traced := log.NewZapTracedLogger(sLog)
 
-	if a, err = app.NewAPI(ctx, conf, trace.NewSugaredLogger(sLog)); err != nil {
-		sLog.Fatalw("Create app", err)
+	if a, err = cmd.NewAPI(conf, traced, log.NewZapBadger(sLog)); err != nil {
+		traced.Errorw(trace.RuntimeTraceID, "Create app", err)
+		os.Exit(1)
 	}
 
-	runCtx, runCancel := context.WithCancel(ctx)
-	defer runCancel()
-	if err = a.Run(trace.WithTraceID(runCtx, "run")); err != nil {
-		sLog.Fatalw("Start API", err)
+	if err = a.Run(context.Background()); err != nil {
+		traced.Errorw(trace.RuntimeTraceID, "Run", err)
+		os.Exit(1)
 	}
 }

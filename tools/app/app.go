@@ -9,16 +9,17 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/pkg/errors"
 
+	"github.com/Roma7-7-7/shared-clipboard/tools/log"
 	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
 type App struct {
 	port int
 	mux  *chi.Mux
-	log  trace.Logger
+	log  log.TracedLogger
 }
 
-func New(port int, mux *chi.Mux, log trace.Logger) *App {
+func New(port int, mux *chi.Mux, log log.TracedLogger) *App {
 	return &App{
 		port: port,
 		mux:  mux,
@@ -42,22 +43,22 @@ func (a *App) Run(ctx context.Context) error {
 		case <-done:
 			return
 		case <-ctx.Done():
-			ctx, cancel := context.WithTimeout(trace.WithTraceID(context.Background(), "shutdown"), 30*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
-			a.log.Infow(ctx, "Shutting down server")
+			a.log.Infow(trace.RuntimeTraceID, "Shutting down server")
 			if err := s.Shutdown(ctx); err != nil {
-				a.log.Errorw(ctx, "Shutdown server", err)
+				a.log.Errorw(trace.RuntimeTraceID, "Shutdown server", err)
 			}
-			a.log.Infow(ctx, "Server stopped")
+			a.log.Infow(trace.RuntimeTraceID, "Server stopped")
 			return
 		}
 	}()
 
-	a.log.Infow(ctx, "Starting server", "address", addr)
+	a.log.Infow(trace.RuntimeTraceID, "Starting server", "address", addr)
 	if err := s.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("server listen: %w", err)
 	}
-	a.log.Infow(ctx, "Server stopped")
+	a.log.Infow(trace.RuntimeTraceID, "Server stopped")
 
 	return nil
 }

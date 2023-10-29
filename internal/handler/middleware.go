@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5/middleware"
 
+	"github.com/Roma7-7-7/shared-clipboard/tools/log"
 	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
@@ -17,18 +18,18 @@ func TraceID(next http.Handler) http.Handler {
 			tid = randomAlphanumericTraceID()
 		}
 		w.Header().Set(middleware.RequestIDHeader, tid)
-		next.ServeHTTP(w, r.WithContext(trace.WithTraceID(r.Context(), tid)))
+		next.ServeHTTP(w, r.WithContext(trace.WithID(r.Context(), tid)))
 	})
 }
 
-func Logger(l trace.Logger) func(next http.Handler) http.Handler {
+func Logger(l log.TracedLogger) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 
 			started := time.Now()
 			defer func() {
-				l.Infow(r.Context(), "request",
+				l.Infow(trace.ID(r.Context()), "request",
 					"method", r.Method,
 					"url", r.URL.String(),
 					"proto", r.Proto,
