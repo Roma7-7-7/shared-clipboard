@@ -23,7 +23,6 @@ func NewRouter(conf config.Web, log log.TracedLogger) (*chi.Mux, error) {
 
 	r := chi.NewRouter()
 
-	r.Use(handler.TraceID)
 	if conf.Dev {
 		r.Use(handler.Logger(log))
 	}
