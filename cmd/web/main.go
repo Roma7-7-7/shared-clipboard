@@ -5,7 +5,6 @@ import (
 	"flag"
 	stdLog "log"
 	"os"
-	"time"
 
 	"go.uber.org/zap"
 
@@ -21,14 +20,11 @@ func main() {
 	flag.Parse()
 
 	var (
-		ctx, cancel = context.WithTimeout(context.Background(), 1*time.Minute)
-		conf        config.Web
-		l           *zap.Logger
-		a           *cmd.Web
-		err         error
+		conf config.Web
+		l    *zap.Logger
+		a    *cmd.Web
+		err  error
 	)
-	defer cancel()
-	ctx = trace.WithID(ctx, "bootstrap")
 
 	if conf, err = config.NewWeb(*configPath); err != nil {
 		stdLog.Fatalf("create config: %v", err)
