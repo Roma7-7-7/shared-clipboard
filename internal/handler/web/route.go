@@ -1,7 +1,6 @@
 package web
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -14,16 +13,19 @@ import (
 
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
 	"github.com/Roma7-7-7/shared-clipboard/internal/handler"
+	"github.com/Roma7-7-7/shared-clipboard/tools/log"
+	"github.com/Roma7-7-7/shared-clipboard/tools/rest"
 	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
-func NewRouter(ctx context.Context, conf config.Web, log trace.Logger) (*chi.Mux, error) {
-	log.Infow(ctx, "Initializing web router")
+func NewRouter(conf config.Web, log log.TracedLogger) (*chi.Mux, error) {
+	log.Infow(trace.RuntimeTraceID, "Initializing web router")
 
 	r := chi.NewRouter()
 
-	r.Use(handler.TraceID)
-	r.Use(handler.Logger(log))
+	if conf.Dev {
+		r.Use(handler.Logger(log))
+	}
 	r.Use(httprate.LimitByIP(10, 1*time.Second))
 	r.Use(middleware.RedirectSlashes)
 	r.Use(middleware.Recoverer)
@@ -42,14 +44,14 @@ func NewRouter(ctx context.Context, conf config.Web, log trace.Logger) (*chi.Mux
 		delegate: http.FileServer(fs),
 	})
 
-	log.Infow(ctx, "Router initialized")
+	log.Infow(trace.RuntimeTraceID, "Router initialized")
 	return r, nil
 }
 
 type envJson struct {
 	lastModified string
 	response     string
-	log          trace.Logger
+	log          log.TracedLogger
 }
 
 func (e envJson) Handle(rw http.ResponseWriter, r *http.Request) {
@@ -58,10 +60,10 @@ func (e envJson) Handle(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rw.Header().Set(handler.ContentTypeHeader, handler.ContentTypeJavaScript)
+	rw.Header().Set(rest.ContentTypeHeader, rest.ContentTypeJavaScript)
 	rw.Header().Set("Last-Modified", e.lastModified)
 	if _, err := rw.Write([]byte(e.response)); err != nil {
-		e.log.Errorw(r.Context(), "Failed to write response", err)
+		e.log.Errorw(trace.ID(r.Context()), "Failed to write response", err)
 	}
 }
 
@@ -79,7 +81,7 @@ func (h handleSpecificError) ServeHTTP(rw http.ResponseWriter, r *http.Request) 
 
 	_, err := h.fs.Open(cleanPath)
 	if os.IsNotExist(err) {
-		http.Redirect(rw, r, "/404.html", http.StatusMovedPermanently)
+		http.Redirect(rw, r, "/404.html", http.StatusSeeOther)
 		return
 	}
 

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Roma7-7-7/shared-clipboard/internal/handler"
-	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
+	"github.com/Roma7-7-7/shared-clipboard/tools/log"
+	"github.com/Roma7-7-7/shared-clipboard/tools/rest"
 )
 
 type errorCode string
@@ -37,10 +37,18 @@ func marshalErrorBody() []byte {
 	return []byte(fmt.Sprintf(errorResponseTmpl, errorCodeMarshalResponse, "Failed to marshal response"))
 }
 
-func sendErrorMarshalBody(ctx context.Context, rw http.ResponseWriter, log trace.Logger) {
-	handler.Send(ctx, rw, http.StatusInternalServerError, handler.ContentTypeJSON, marshalErrorBody(), log)
+func sendNotFound(ctx context.Context, rw http.ResponseWriter, log log.TracedLogger) {
+	rest.Send(ctx, rw, http.StatusNotFound, rest.ContentTypeJSON, notFoundErrorBody(), log)
 }
 
-func sendInternalServerError(ctx context.Context, rw http.ResponseWriter, log trace.Logger) {
-	handler.Send(ctx, rw, http.StatusInternalServerError, handler.ContentTypeJSON, internalServerErrorBody(), log)
+func sendErrorMarshalBody(ctx context.Context, rw http.ResponseWriter, log log.TracedLogger) {
+	rest.Send(ctx, rw, http.StatusInternalServerError, rest.ContentTypeJSON, marshalErrorBody(), log)
+}
+
+func sendErrorMethodNotAllowed(ctx context.Context, method string, rw http.ResponseWriter, log log.TracedLogger) {
+	rest.Send(ctx, rw, http.StatusMethodNotAllowed, rest.ContentTypeJSON, methodNotAllowedErrorBody(method), log)
+}
+
+func sendInternalServerError(ctx context.Context, rw http.ResponseWriter, log log.TracedLogger) {
+	rest.Send(ctx, rw, http.StatusInternalServerError, rest.ContentTypeJSON, internalServerErrorBody(), log)
 }

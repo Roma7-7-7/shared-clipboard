@@ -6,18 +6,18 @@
     <link rel="stylesheet" href="assets/css/main.css">
     <script src="assets/js/env.js"></script>
     <script src="assets/js/main.js"></script>
+    <script src="assets/js/clipboard.js"></script>
 </head>
 <body>
 <div class="navbar">
     <h1>Shared clipboard</h1>
     <div class="buttons">
-        <button id="startButton">Create</button>
-        <button id="joinButton">Join</button>
+        <button id="startButton">Start New</button>
+        <button id="joinButton">Join Other</button>
     </div>
 </div>
-<div id="header">
-    <p>The purpose of this service is to share clipboard content across multiple hosts.</p>
-    <p>You may use Start button to start new clipboard session or Join if you want to join already started session.</p>
+<div id="clipboardContainer">
+    <label for="clipboardText"></label><textarea id="clipboardText"></textarea>
 </div>
 </body>
 </html>

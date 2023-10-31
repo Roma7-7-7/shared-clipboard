@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <title>Shared clipboard</title>
     <link rel="stylesheet" href="assets/css/main.css">
+    <script src="assets/js/env.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/join.js"></script>
 </head>
 <body>
 <div class="navbar">
@@ -13,17 +16,16 @@
     </div>
 </div>
 <div id="header">
-    <p>Here you init a new clipboard session.</p>
+    <p>Here you create a new clipboard session.</p>
     <p>Open another browser to join this session and paste the provided key (you need to navigate to the join page via the corresponding button).</p>
 </div>
 <div class="container">
-    <div id="sessionID">ABC123</div>
+    <div id="sessionID">
+        <label for="sessionIDInput"></label><input type="text" id="sessionIDInput" placeholder="Session ID">
+    </div>
     <div class="buttons">
-        <button id="proceedButton">Proceed</button>
+        <button id="proceedButton" type="button" disabled="disabled">Proceed</button>
     </div>
 </div>
 </body>
-<script src="assets/js/env.js"></script>
-<script src="assets/js/main.js"></script>
-<script src="assets/js/init.js"></script>
 </html>

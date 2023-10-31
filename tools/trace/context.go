@@ -2,9 +2,11 @@ package trace
 
 import "context"
 
+const RuntimeTraceID = "runtime"
+
 type traceIDCtxKey struct{}
 
-func WithTraceID(ctx context.Context, traceID string) context.Context {
+func WithID(ctx context.Context, traceID string) context.Context {
 	return context.WithValue(ctx, &traceIDCtxKey{}, traceID)
 }
 
