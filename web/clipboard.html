@@ -3,21 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <title>Shared clipboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <link rel="stylesheet" href="assets/css/main.css">
     <script src="assets/js/env.js"></script>
     <script src="assets/js/main.js"></script>
-    <script src="assets/js/clipboard.js"></script>
+    <script src="assets/js/start.js"></script>
 </head>
 <body>
-<div class="navbar">
-    <h1>Shared clipboard</h1>
-    <div class="buttons">
-        <button id="startButton">Start New</button>
-        <button id="joinButton">Join Other</button>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-lg">
+        <a class="navbar-brand" href="index.html">Clipboard share</a>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0"></ul>
+            <a href="start.html" class="btn btn-outline-secondary me-2">Start New</a>
+            <a href="join.html" class="btn btn-outline-secondary me-2">Join Other</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container-lg my-4">
+    <div class="row my-2">
+        <div class="col-lg-8 offset-2">
+            <label for="exampleFormControlTextarea1" class="form-label">Share text:</label>
+            <textarea class="form-control" id="exampleFormControlTextarea1" rows="30"></textarea>
+        </div>
+    </div>
+    <div class="row my-2">
+        <div class="col-lg-4 offset-4">
+            <div class="col-md-8 offset-md-2 d-flex justify-content-center align-items-center">
+                <button class="btn btn-primary btn-md" id="shareText">Share</button>
+            </div>
+        </div>
     </div>
 </div>
-<div id="clipboardContainer">
-    <label for="clipboardText"></label><textarea id="clipboardText"></textarea>
-</div>
 </body>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
 </html>
