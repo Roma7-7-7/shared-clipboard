@@ -22,12 +22,6 @@ var (
 	errorCodeMarshalResponse = errorCode("ERR_1000")
 )
 
-type genericErrorResponse struct {
-	Code    errorCode `json:"code"`
-	Message string    `json:"message"`
-	Details string    `json:"details,omitempty"`
-}
-
 func badRequestErrorBody(message string) []byte {
 	return []byte(fmt.Sprintf(errorResponseTmpl, errorBadRequest, message))
 }

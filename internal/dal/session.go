@@ -17,8 +17,6 @@ var (
 	idRunes = []rune("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 )
 
-type contentType string
-
 type Session struct {
 	SessionID   uint64    `json:"session_id"`
 	JoinKey     string    `json:"join_key"`
@@ -214,12 +212,6 @@ func (r *SessionRepository) SetContentByID(sid uint64, contentType string, conte
 	}
 
 	return &s, nil
-}
-
-func (r *SessionRepository) mapJoinKeyToSessionID(key string, sessionID uint64) error {
-	return r.db.Update(func(txn *badger.Txn) error {
-		return txn.Set(joinDBKey(key), []byte(strconv.FormatUint(sessionID, 10)))
-	})
 }
 
 func sessionDBKey(id uint64) []byte {
