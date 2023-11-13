@@ -39,7 +39,11 @@ func NewAPI(conf config.API, traced log.TracedLogger, badgerLog badger.Logger) (
 	}
 
 	traced.Infow(trace.RuntimeTraceID, "Creating router")
-	if h, err = api.NewRouter(dal.NewSessionRepository(db), conf, traced); err != nil {
+	badgerRepo, err := dal.NewSessionRepository(db)
+	if err != nil {
+		return nil, fmt.Errorf("create repository: %w", err)
+	}
+	if h, err = api.NewRouter(badgerRepo, conf, traced); err != nil {
 		return nil, fmt.Errorf("create router: %w", err)
 	}
 

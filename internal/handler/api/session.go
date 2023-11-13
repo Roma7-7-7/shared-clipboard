@@ -2,7 +2,10 @@ package api
 
 import (
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 
@@ -12,9 +15,18 @@ import (
 	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
+type Session struct {
+	SessionID uint64 `json:"session_id"`
+	JoinKey   string `json:"join_key"`
+	UpdatedAt int64  `json:"updated_at"`
+}
+
 type SessionRepository interface {
-	Get(id string) (*dal.Session, error)
+	GetByID(id uint64) (*dal.Session, error)
+	GetByJoinKey(key string) (*dal.Session, error)
 	Create() (*dal.Session, error)
+	GetContentByID(id uint64) (*dal.Session, error)
+	SetContentByID(sessionID uint64, contentType string, content []byte) (*dal.Session, error)
 }
 
 type SessionHandler struct {
@@ -32,7 +44,93 @@ func NewSessionHandler(sessionRepo SessionRepository, log log.TracedLogger) *Ses
 
 func (s *SessionHandler) RegisterRoutes(r chi.Router) {
 	r.Post("/", s.Create)
-	r.Get("/{id}", s.Get)
+	r.Get("/", s.GetByJoinKey)
+	r.Get("/{sessionID}", s.GetByID)
+	r.Get("/{sessionID}/content", s.GetContent)
+	r.Put("/{sessionID}", s.SetContent)
+}
+
+func (s *SessionHandler) GetByID(rw http.ResponseWriter, r *http.Request) {
+	var (
+		sessionID string
+		sid       uint64
+		session   *dal.Session
+		body      []byte
+		err       error
+	)
+
+	sessionID = chi.URLParam(r, "sessionID")
+	if sessionID == "" {
+		s.log.Debugw(trace.ID(r.Context()), "sessionID is empty")
+		sendBadRequest(r.Context(), rw, "sessionID param is required", s.log)
+		return
+	}
+
+	if sid, err = strconv.ParseUint(sessionID, 10, 64); err != nil {
+		s.log.Errorw(trace.ID(r.Context()), "failed to parse sessionID", err)
+		sendBadRequest(r.Context(), rw, "sessionID param must be a valid uint64 value", s.log)
+		return
+	}
+
+	if session, err = s.sessionRepo.GetByID(sid); err != nil {
+		if errors.Is(err, dal.ErrNotFound) {
+			s.log.Debugw(trace.ID(r.Context()), "session not found", "id", sessionID)
+			sendNotFound(r.Context(), rw, "Session with provided ID not found", s.log)
+			return
+		}
+
+		s.log.Errorw(trace.ID(r.Context()), "failed to get session", err)
+		sendInternalServerError(r.Context(), rw, s.log)
+		return
+	}
+
+	s.log.Debugw(trace.ID(r.Context()), "Got session", "id", session.SessionID)
+	if body, err = rest.ToJSON(toDTO(session)); err != nil {
+		s.log.Errorw(trace.ID(r.Context()), "failed to marshal session", err)
+		sendErrorMarshalBody(r.Context(), rw, s.log)
+		return
+	}
+
+	rw.Header().Set(rest.LastModifiedHeader, session.UpdatedAt.Format(http.TimeFormat))
+	rest.Send(r.Context(), rw, http.StatusOK, rest.ContentTypeJSON, body, s.log)
+}
+
+func (s *SessionHandler) GetByJoinKey(rw http.ResponseWriter, r *http.Request) {
+	var (
+		joinKey string
+		session *dal.Session
+		body    []byte
+		err     error
+	)
+
+	joinKey = r.URL.Query().Get("joinKey")
+	if joinKey == "" {
+		s.log.Debugw(trace.ID(r.Context()), "joinKey is empty")
+		sendBadRequest(r.Context(), rw, "joinKey param is required", s.log)
+		return
+	}
+
+	if session, err = s.sessionRepo.GetByJoinKey(joinKey); err != nil {
+		if errors.Is(err, dal.ErrNotFound) {
+			s.log.Debugw(trace.ID(r.Context()), "session not found", "id", joinKey)
+			sendNotFound(r.Context(), rw, "Session with provided join key not found", s.log)
+			return
+		}
+
+		s.log.Errorw(trace.ID(r.Context()), "failed to get session", err)
+		sendInternalServerError(r.Context(), rw, s.log)
+		return
+	}
+
+	s.log.Debugw(trace.ID(r.Context()), "Got session", "id", session.SessionID)
+	if body, err = rest.ToJSON(toDTO(session)); err != nil {
+		s.log.Errorw(trace.ID(r.Context()), "failed to marshal session", err)
+		sendErrorMarshalBody(r.Context(), rw, s.log)
+		return
+	}
+
+	rw.Header().Set(rest.LastModifiedHeader, session.UpdatedAt.Format(http.TimeFormat))
+	rest.Send(r.Context(), rw, http.StatusOK, rest.ContentTypeJSON, body, s.log)
 }
 
 func (s *SessionHandler) Create(rw http.ResponseWriter, r *http.Request) {
@@ -49,29 +147,42 @@ func (s *SessionHandler) Create(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	s.log.Debugw(trace.ID(r.Context()), "Created session", "id", session.SessionID)
-	if body, err = rest.ToJSON(session); err != nil {
+	if body, err = rest.ToJSON(toDTO(session)); err != nil {
 		s.log.Errorw(trace.ID(r.Context()), "failed to marshal session", err)
 		sendErrorMarshalBody(r.Context(), rw, s.log)
 		return
 	}
 
+	rw.Header().Set(rest.LastModifiedHeader, session.UpdatedAt.Format(http.TimeFormat))
 	rest.Send(r.Context(), rw, http.StatusCreated, rest.ContentTypeJSON, body, s.log)
 }
 
-func (s *SessionHandler) Get(rw http.ResponseWriter, r *http.Request) {
+func (s *SessionHandler) GetContent(rw http.ResponseWriter, r *http.Request) {
 	var (
-		sessionID string
-		session   *dal.Session
-		body      []byte
-		err       error
+		ifLastModified = r.Header.Get(rest.IfModifiedSinceHeader)
+		sessionID      string
+		sid            uint64
+		session        *dal.Session
+		err            error
 	)
 
-	sessionID = chi.URLParam(r, "id")
+	sessionID = chi.URLParam(r, "sessionID")
+	if sessionID == "" {
+		s.log.Debugw(trace.ID(r.Context()), "sessionID is empty")
+		sendBadRequest(r.Context(), rw, "sessionID param is required", s.log)
+		return
+	}
 
-	if session, err = s.sessionRepo.Get(sessionID); err != nil {
+	if sid, err = strconv.ParseUint(sessionID, 10, 64); err != nil {
+		s.log.Errorw(trace.ID(r.Context()), "failed to parse sessionID", err)
+		sendBadRequest(r.Context(), rw, "sessionID param must be a valid uint64 value", s.log)
+		return
+	}
+
+	if session, err = s.sessionRepo.GetContentByID(sid); err != nil {
 		if errors.Is(err, dal.ErrNotFound) {
 			s.log.Debugw(trace.ID(r.Context()), "session not found", "id", sessionID)
-			sendNotFound(r.Context(), rw, s.log)
+			sendNotFound(r.Context(), rw, "Session with provided ID not found", s.log)
 			return
 		}
 
@@ -80,12 +191,82 @@ func (s *SessionHandler) Get(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if ifLastModified != "" && session.UpdatedAt.Format(http.TimeFormat) == ifLastModified {
+		s.log.Debugw(trace.ID(r.Context()), "Not modified", "id", session.SessionID)
+		rw.WriteHeader(http.StatusNotModified)
+		return
+	}
+
 	s.log.Debugw(trace.ID(r.Context()), "Got session", "id", session.SessionID)
-	if body, err = rest.ToJSON(session); err != nil {
+	rw.Header().Set(rest.LastModifiedHeader, session.UpdatedAt.Format(http.TimeFormat))
+	rw.Header().Set(rest.ContentTypeHeader, session.ContentType)
+	if _, err = rw.Write(session.Content); err != nil {
+		s.log.Errorw(trace.ID(r.Context()), "failed to write content", err)
+	}
+}
+
+func (s *SessionHandler) SetContent(rw http.ResponseWriter, r *http.Request) {
+	var (
+		contentType = r.Header.Get(rest.ContentTypeHeader)
+		sessionID   string
+		sid         uint64
+		session     *dal.Session
+		body        []byte
+		err         error
+	)
+
+	if contentType != "text/plain" {
+		s.log.Debugw(trace.ID(r.Context()), "Content-Type is not text/plain")
+		sendBadRequest(r.Context(), rw, fmt.Sprintf("Content-Type %s is not supported", contentType), s.log)
+		return
+	}
+
+	sessionID = chi.URLParam(r, "sessionID")
+	if sessionID == "" {
+		s.log.Debugw(trace.ID(r.Context()), "sessionID is empty")
+		sendBadRequest(r.Context(), rw, "sessionID param is required", s.log)
+		return
+	}
+
+	if body, err = io.ReadAll(r.Body); err != nil {
+		s.log.Errorw(trace.ID(r.Context()), "failed to read body", err)
+		sendInternalServerError(r.Context(), rw, s.log)
+		return
+	}
+
+	if sid, err = strconv.ParseUint(sessionID, 10, 64); err != nil {
+		s.log.Errorw(trace.ID(r.Context()), "failed to parse sessionID", err)
+		sendBadRequest(r.Context(), rw, "sessionID param must be a valid uint64 value", s.log)
+		return
+	}
+
+	if session, err = s.sessionRepo.SetContentByID(sid, contentType, body); err != nil {
+		if errors.Is(err, dal.ErrNotFound) {
+			s.log.Debugw(trace.ID(r.Context()), "session not found", "id", sessionID)
+			sendNotFound(r.Context(), rw, "Session with provided ID not found", s.log)
+			return
+		}
+
+		s.log.Errorw(trace.ID(r.Context()), "failed to set text content", err)
+		sendInternalServerError(r.Context(), rw, s.log)
+		return
+	}
+
+	s.log.Debugw(trace.ID(r.Context()), "Set text content", "id", session.SessionID)
+	if body, err = rest.ToJSON(toDTO(session)); err != nil {
 		s.log.Errorw(trace.ID(r.Context()), "failed to marshal session", err)
 		sendErrorMarshalBody(r.Context(), rw, s.log)
 		return
 	}
 
+	rw.Header().Set(rest.LastModifiedHeader, session.UpdatedAt.Format(http.TimeFormat))
 	rest.Send(r.Context(), rw, http.StatusOK, rest.ContentTypeJSON, body, s.log)
+}
+
+func toDTO(session *dal.Session) *Session {
+	return &Session{
+		SessionID: session.SessionID,
+		JoinKey:   session.JoinKey,
+		UpdatedAt: session.UpdatedAt.UnixMilli(),
+	}
 }

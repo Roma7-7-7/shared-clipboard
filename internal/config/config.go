@@ -22,7 +22,7 @@ type (
 		APIHost         string `json:"api_host"`
 	}
 	CORS struct {
-		AllowOrigin      string   `json:"allow_origin"`
+		AllowOrigins     []string `json:"allow_origins"`
 		AllowMethods     []string `json:"allow_methods"`
 		AllowHeaders     []string `json:"allow_headers"`
 		ExposeHeaders    []string `json:"expose_headers"`

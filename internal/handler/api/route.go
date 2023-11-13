@@ -26,9 +26,9 @@ func NewRouter(sessionRepo SessionRepository, conf config.API, log log.TracedLog
 	r.Use(httprate.LimitByIP(10, 1*time.Second))
 	r.Use(middleware.RedirectSlashes)
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.Compress(5, "text/javascript"))
+	r.Use(middleware.Compress(5, "text/html", "text/css", "text/javascript"))
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{fmt.Sprintf("http://%s", conf.CORS.AllowOrigin), fmt.Sprintf("https://%s", conf.CORS.AllowOrigin)},
+		AllowedOrigins:   conf.CORS.AllowOrigins,
 		AllowedMethods:   conf.CORS.AllowMethods,
 		AllowedHeaders:   conf.CORS.AllowHeaders,
 		ExposedHeaders:   conf.CORS.ExposeHeaders,
@@ -51,7 +51,7 @@ func NewRouter(sessionRepo SessionRepository, conf config.API, log log.TracedLog
 
 func handleNotFound(log log.TracedLogger) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		sendNotFound(r.Context(), rw, log)
+		sendNotFound(r.Context(), rw, "Not Found", log)
 	}
 }
 

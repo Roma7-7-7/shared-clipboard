@@ -11,7 +11,9 @@ import (
 )
 
 const (
-	ContentTypeHeader = "Content-Type"
+	ContentTypeHeader     = "Content-Type"
+	LastModifiedHeader    = "Last-Modified"
+	IfModifiedSinceHeader = "If-Modified-Since"
 
 	ContentTypeJSON       = "application/json"
 	ContentTypeJavaScript = "application/javascript"

@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="assets/css/main.css">
     <script src="assets/js/env.js"></script>
     <script src="assets/js/main.js"></script>
-    <script src="assets/js/start.js"></script>
+    <script src="assets/js/clipboard.js"></script>
 </head>
 <body>
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
@@ -22,16 +22,17 @@
 </nav>
 
 <div class="container-lg my-4">
+    <div id="liveAlertPlaceholder"></div>
     <div class="row my-2">
         <div class="col-lg-8 offset-2">
-            <label for="exampleFormControlTextarea1" class="form-label">Share text:</label>
-            <textarea class="form-control" id="exampleFormControlTextarea1" rows="30"></textarea>
+            <label for="clipboardText" class="form-label">Share text:</label>
+            <textarea class="form-control" id="clipboardText" rows="30"></textarea>
         </div>
     </div>
     <div class="row my-2">
         <div class="col-lg-4 offset-4">
             <div class="col-md-8 offset-md-2 d-flex justify-content-center align-items-center">
-                <button class="btn btn-primary btn-md" id="shareText">Share</button>
+                <button class="btn btn-primary btn-md" id="shareTextButton">Share</button>
             </div>
         </div>
     </div>
