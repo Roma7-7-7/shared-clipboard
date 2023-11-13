@@ -1,11 +1,12 @@
 removeSessionID()
+let sessionID = null;
 
 document.addEventListener("DOMContentLoaded", function() {
     const sessionIdElement = document.getElementById("sessionID");
     const proceedButton = document.getElementById('proceedButton');
 
     proceedButton.addEventListener("click", function () {
-        storeSessionID(sessionIdElement.innerText);
+        storeSessionID(sessionID);
         window.location.href = "/clipboard.html";
     })
 
@@ -28,7 +29,8 @@ document.addEventListener("DOMContentLoaded", function() {
         })
         .then(data => {
             proceedButton.removeAttribute("disabled")
-            sessionIdElement.innerText = data["session_id"].trim();
+            sessionIdElement.innerText = data["join_key"].trim();
+            sessionID = data["session_id"];
         })
         .catch(error => {
             console.error('Error:', error)

@@ -61,7 +61,7 @@ func (e envJson) Handle(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	rw.Header().Set(rest.ContentTypeHeader, rest.ContentTypeJavaScript)
-	rw.Header().Set("Last-Modified", e.lastModified)
+	rw.Header().Set(rest.LastModifiedHeader, e.lastModified)
 	if _, err := rw.Write([]byte(e.response)); err != nil {
 		e.log.Errorw(trace.ID(r.Context()), "Failed to write response", err)
 	}

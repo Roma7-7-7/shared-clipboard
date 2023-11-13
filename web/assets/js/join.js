@@ -16,26 +16,26 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     proceedButton.addEventListener('click', function () {
-        fetch(apiHost + '/sessions/' + sessionIDInput.value)
+        fetch(apiHost + '/sessions?joinKey=' + sessionIDInput.value)
             .then(response => {
-                if (response.ok) {
-                    storeSessionID(sessionIDInput.value)
-                    window.location.href = '/clipboard.html'
-                    return
+                return response.json()
+            })
+            .then(data => {
+                if (data['error']) {
+                    showAlert(liveAlertPlaceholder, data['message'])
+                    return;
                 }
 
-                if (response.status === 404) {
-                    setAlert(liveAlertPlaceholder, 'Session not found')
-                }
+                storeSessionID(data['session_id'])
+                window.location.href = '/clipboard.html'
             })
             .catch(error => {
-                console.error('Error:', error)
-                window.location.href = "/error.html";
+                showAlert(liveAlertPlaceholder, 'Failed to join session')
             })
     });
 });
 
-function setAlert(placeholder, message) {
+function showAlert(placeholder, message) {
     placeholder.innerHTML = ''
 
     const wrapper = document.createElement('div')

@@ -11,18 +11,29 @@ import (
 
 type errorCode string
 
-const errorResponseTmpl = `{"code": "%s", "message": "%s"}`
+const errorResponseTmpl = `{"error": true, "code": "%s", "message": "%s"}`
 
 var (
 	errorCodeInternalServerError = errorCode("ERR_0500")
+	errorBadRequest              = errorCode("ERR_040")
 	errorCodeNotFound            = errorCode("ERR_0404")
 	errorCodeMethodNotAllowed    = errorCode("ERR_0405")
 
 	errorCodeMarshalResponse = errorCode("ERR_1000")
 )
 
-func notFoundErrorBody() []byte {
-	return []byte(fmt.Sprintf(errorResponseTmpl, errorCodeNotFound, "Not Found"))
+type genericErrorResponse struct {
+	Code    errorCode `json:"code"`
+	Message string    `json:"message"`
+	Details string    `json:"details,omitempty"`
+}
+
+func badRequestErrorBody(message string) []byte {
+	return []byte(fmt.Sprintf(errorResponseTmpl, errorBadRequest, message))
+}
+
+func notFoundErrorBody(message string) []byte {
+	return []byte(fmt.Sprintf(errorResponseTmpl, errorCodeNotFound, message))
 }
 
 func methodNotAllowedErrorBody(method string) []byte {
@@ -30,15 +41,19 @@ func methodNotAllowedErrorBody(method string) []byte {
 }
 
 func internalServerErrorBody() []byte {
-	return []byte(fmt.Sprintf(errorResponseTmpl, errorCodeInternalServerError, "Internal Server Error"))
+	return []byte(fmt.Sprintf(errorResponseTmpl, errorCodeInternalServerError, "Internal server error"))
 }
 
 func marshalErrorBody() []byte {
 	return []byte(fmt.Sprintf(errorResponseTmpl, errorCodeMarshalResponse, "Failed to marshal response"))
 }
 
-func sendNotFound(ctx context.Context, rw http.ResponseWriter, log log.TracedLogger) {
-	rest.Send(ctx, rw, http.StatusNotFound, rest.ContentTypeJSON, notFoundErrorBody(), log)
+func sendBadRequest(ctx context.Context, rw http.ResponseWriter, message string, log log.TracedLogger) {
+	rest.Send(ctx, rw, http.StatusBadRequest, rest.ContentTypeJSON, badRequestErrorBody(message), log)
+}
+
+func sendNotFound(ctx context.Context, rw http.ResponseWriter, message string, log log.TracedLogger) {
+	rest.Send(ctx, rw, http.StatusNotFound, rest.ContentTypeJSON, notFoundErrorBody(message), log)
 }
 
 func sendErrorMarshalBody(ctx context.Context, rw http.ResponseWriter, log log.TracedLogger) {
