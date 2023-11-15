@@ -28,7 +28,7 @@ bin/
 .env
 
 # DB
-db
+./db
 
 # Env
 web/assets/js/env.js
