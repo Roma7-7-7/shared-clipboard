@@ -10,7 +10,6 @@
     "allow_credentials": false
   },
   "db": {
-    "debug": false,
-    "path": "./data"
+    "path": "./db"
   }
 }

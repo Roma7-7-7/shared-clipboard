@@ -25,20 +25,25 @@ type SessionRepository interface {
 	GetByID(id uint64) (*dal.Session, error)
 	GetByJoinKey(key string) (*dal.Session, error)
 	Create() (*dal.Session, error)
-	GetContentByID(id uint64) (*dal.Session, error)
-	SetContentByID(sessionID uint64, contentType string, content []byte) (*dal.Session, error)
+}
+
+type ClipboardRepository interface {
+	GetBySessionID(id uint64) (*dal.Clipboard, error)
+	SetBySessionID(id uint64, contentType string, content []byte) (*dal.Clipboard, error)
 }
 
 type SessionHandler struct {
-	sessionRepo SessionRepository
+	sessionRepo   SessionRepository
+	clipboardRepo ClipboardRepository
 
 	log log.TracedLogger
 }
 
-func NewSessionHandler(sessionRepo SessionRepository, log log.TracedLogger) *SessionHandler {
+func NewSessionHandler(sessionRepo SessionRepository, clipboardRepo ClipboardRepository, log log.TracedLogger) *SessionHandler {
 	return &SessionHandler{
-		sessionRepo: sessionRepo,
-		log:         log,
+		sessionRepo:   sessionRepo,
+		clipboardRepo: clipboardRepo,
+		log:           log,
 	}
 }
 
@@ -46,8 +51,8 @@ func (s *SessionHandler) RegisterRoutes(r chi.Router) {
 	r.Post("/", s.Create)
 	r.Get("/", s.GetByJoinKey)
 	r.Get("/{sessionID}", s.GetByID)
-	r.Get("/{sessionID}/content", s.GetContent)
-	r.Put("/{sessionID}", s.SetContent)
+	r.Get("/{sessionID}/clipboard", s.GetClipboard)
+	r.Put("/{sessionID}/clipboard", s.SetClipboard)
 }
 
 func (s *SessionHandler) GetByID(rw http.ResponseWriter, r *http.Request) {
@@ -157,12 +162,12 @@ func (s *SessionHandler) Create(rw http.ResponseWriter, r *http.Request) {
 	rest.Send(r.Context(), rw, http.StatusCreated, rest.ContentTypeJSON, body, s.log)
 }
 
-func (s *SessionHandler) GetContent(rw http.ResponseWriter, r *http.Request) {
+func (s *SessionHandler) GetClipboard(rw http.ResponseWriter, r *http.Request) {
 	var (
 		ifLastModified = r.Header.Get(rest.IfModifiedSinceHeader)
 		sessionID      string
 		sid            uint64
-		session        *dal.Session
+		clipboard      *dal.Clipboard
 		err            error
 	)
 
@@ -179,38 +184,39 @@ func (s *SessionHandler) GetContent(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if session, err = s.sessionRepo.GetContentByID(sid); err != nil {
+	if clipboard, err = s.clipboardRepo.GetBySessionID(sid); err != nil {
 		if errors.Is(err, dal.ErrNotFound) {
-			s.log.Debugw(trace.ID(r.Context()), "session not found", "id", sessionID)
-			sendNotFound(r.Context(), rw, "Session with provided ID not found", s.log)
+			s.log.Debugw(trace.ID(r.Context()), "clipboard not found", "id", sessionID)
+			rest.Send(r.Context(), rw, http.StatusNoContent, rest.ContentTypeJSON, nil, s.log)
 			return
 		}
 
-		s.log.Errorw(trace.ID(r.Context()), "failed to get session", err)
+		s.log.Errorw(trace.ID(r.Context()), "failed to get clipboard", err)
 		sendInternalServerError(r.Context(), rw, s.log)
 		return
 	}
 
-	if ifLastModified != "" && session.UpdatedAt.Format(http.TimeFormat) == ifLastModified {
-		s.log.Debugw(trace.ID(r.Context()), "Not modified", "id", session.SessionID)
+	lastModified := clipboard.UpdatedAt.UTC().Format(http.TimeFormat)
+	if ifLastModified != "" && lastModified == ifLastModified {
+		s.log.Debugw(trace.ID(r.Context()), "Not modified", "id", sid)
 		rw.WriteHeader(http.StatusNotModified)
 		return
 	}
 
-	s.log.Debugw(trace.ID(r.Context()), "Got session", "id", session.SessionID)
-	rw.Header().Set(rest.LastModifiedHeader, session.UpdatedAt.Format(http.TimeFormat))
-	rw.Header().Set(rest.ContentTypeHeader, session.ContentType)
-	if _, err = rw.Write(session.Content); err != nil {
+	s.log.Debugw(trace.ID(r.Context()), "Got session", "id", sid)
+	rw.Header().Set(rest.LastModifiedHeader, lastModified)
+	rw.Header().Set(rest.ContentTypeHeader, clipboard.ContentType)
+	if _, err = rw.Write(clipboard.Content); err != nil {
 		s.log.Errorw(trace.ID(r.Context()), "failed to write content", err)
 	}
 }
 
-func (s *SessionHandler) SetContent(rw http.ResponseWriter, r *http.Request) {
+func (s *SessionHandler) SetClipboard(rw http.ResponseWriter, r *http.Request) {
 	var (
 		contentType = r.Header.Get(rest.ContentTypeHeader)
 		sessionID   string
 		sid         uint64
-		session     *dal.Session
+		clipboard   *dal.Clipboard
 		body        []byte
 		err         error
 	)
@@ -240,27 +246,21 @@ func (s *SessionHandler) SetContent(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if session, err = s.sessionRepo.SetContentByID(sid, contentType, body); err != nil {
+	if clipboard, err = s.clipboardRepo.SetBySessionID(sid, contentType, body); err != nil {
 		if errors.Is(err, dal.ErrNotFound) {
 			s.log.Debugw(trace.ID(r.Context()), "session not found", "id", sessionID)
 			sendNotFound(r.Context(), rw, "Session with provided ID not found", s.log)
 			return
 		}
 
-		s.log.Errorw(trace.ID(r.Context()), "failed to set text content", err)
+		s.log.Errorw(trace.ID(r.Context()), "failed to set content", err)
 		sendInternalServerError(r.Context(), rw, s.log)
 		return
 	}
 
-	s.log.Debugw(trace.ID(r.Context()), "Set text content", "id", session.SessionID)
-	if body, err = rest.ToJSON(toDTO(session)); err != nil {
-		s.log.Errorw(trace.ID(r.Context()), "failed to marshal session", err)
-		sendErrorMarshalBody(r.Context(), rw, s.log)
-		return
-	}
-
-	rw.Header().Set(rest.LastModifiedHeader, session.UpdatedAt.Format(http.TimeFormat))
-	rest.Send(r.Context(), rw, http.StatusOK, rest.ContentTypeJSON, body, s.log)
+	s.log.Debugw(trace.ID(r.Context()), "Set content", "id", sessionID)
+	rw.Header().Set(rest.LastModifiedHeader, clipboard.UpdatedAt.UTC().Format(http.TimeFormat))
+	rest.Send(r.Context(), rw, http.StatusNoContent, "", nil, s.log)
 }
 
 func toDTO(session *dal.Session) *Session {

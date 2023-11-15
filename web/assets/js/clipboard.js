@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", function () {
     shareTextButton.addEventListener('click', function () {
         hideAlert(liveAlertPlaceholder)
 
-        fetch(apiHost + '/sessions/' + getSessionID(), {
+        fetch(apiHost + '/sessions/' + getSessionID() + "/clipboard", {
             method: 'PUT',
             headers: {
                 'Content-Type': 'text/plain'
@@ -16,9 +16,16 @@ document.addEventListener("DOMContentLoaded", function () {
             body: clipboardText.value
         })
             .then(response => {
+                if (response.status === 204) {
+                    return Promise.resolve(null);
+                }
                 return response.json()
             })
             .then(data => {
+                if (data === null) {
+                    showSuccessAlert(liveAlertPlaceholder, 'Content shared');
+                    return;
+                }
                 if (data['error']) {
                     showDangerAlert(liveAlertPlaceholder, data['message']);
                     return;
@@ -32,7 +39,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     setInterval(function () {
-        fetch(apiHost + '/sessions/' + getSessionID() + '/content', {
+        fetch(apiHost + '/sessions/' + getSessionID() + '/clipboard', {
             method: 'GET',
             headers: {
                 'If-Modified-Since': lastModified
@@ -43,7 +50,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     lastModified = response.headers.get('Last-Modified');
                     return response.body.getReader().read()
                 }
-                if (response.status === 304) {
+                if (response.status === 204 || response.status === 304) {
                     return Promise.resolve(null);
                 }
 
