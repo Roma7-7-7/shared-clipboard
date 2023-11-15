@@ -3,8 +3,8 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/dgraph-io/badger/v4"
 	"github.com/go-chi/chi/v5"
+	bolt "go.etcd.io/bbolt"
 
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
 	"github.com/Roma7-7-7/shared-clipboard/internal/dal"
@@ -24,26 +24,28 @@ type (
 	}
 )
 
-func NewAPI(conf config.API, traced log.TracedLogger, badgerLog badger.Logger) (*API, error) {
+func NewAPI(conf config.API, traced log.TracedLogger) (*API, error) {
 	var (
-		db  *badger.DB
+		db  *bolt.DB
 		h   *chi.Mux
 		err error
 	)
 
 	traced.Infow(trace.RuntimeTraceID, "Initializing DB")
-	badgerOpts := badger.DefaultOptions(conf.DB.Path)
-	badgerOpts.Logger = badgerLog
-	if db, err = badger.Open(badgerOpts); err != nil {
+	if db, err = bolt.Open(conf.DB.Path, 0600, nil); err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
 
 	traced.Infow(trace.RuntimeTraceID, "Creating router")
-	badgerRepo, err := dal.NewSessionRepository(db)
+	sessionRepo, err := dal.NewSessionRepository(db)
 	if err != nil {
-		return nil, fmt.Errorf("create repository: %w", err)
+		return nil, fmt.Errorf("create session repository: %w", err)
 	}
-	if h, err = api.NewRouter(badgerRepo, conf, traced); err != nil {
+	clipboardRepo, err := dal.NewClipboardRepository(db)
+	if err != nil {
+		return nil, fmt.Errorf("create clipboard repository: %w", err)
+	}
+	if h, err = api.NewRouter(sessionRepo, clipboardRepo, conf, traced); err != nil {
 		return nil, fmt.Errorf("create router: %w", err)
 	}
 

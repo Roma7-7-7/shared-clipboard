@@ -31,8 +31,7 @@ type (
 	}
 
 	DB struct {
-		Debug bool   `yaml:"debug"`
-		Path  string `yaml:"path"`
+		Path string `yaml:"path"`
 	}
 )
 

@@ -28,7 +28,9 @@ func ToJSON(data any) ([]byte, error) {
 }
 
 func Send(ctx context.Context, rw http.ResponseWriter, status int, contentType string, body []byte, log log.TracedLogger) {
-	rw.Header().Set(ContentTypeHeader, contentType)
+	if contentType != "" {
+		rw.Header().Set(ContentTypeHeader, contentType)
+	}
 	rw.WriteHeader(status)
 	if _, err := rw.Write(body); err != nil {
 		log.Errorw(trace.ID(ctx), "Failed to write response", err)
