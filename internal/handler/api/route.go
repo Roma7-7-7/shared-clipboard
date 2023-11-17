@@ -16,10 +16,19 @@ import (
 	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
-func NewRouter(sessionRepo SessionRepository, clipboardRepo ClipboardRepository, conf config.API, log log.TracedLogger) (*chi.Mux, error) {
+type Dependencies struct {
+	Config config.API
+	CookieProcessor
+	UserService
+	SessionRepository
+	ClipboardRepository
+}
+
+func NewRouter(deps Dependencies, log log.TracedLogger) (*chi.Mux, error) {
 	log.Infow(trace.RuntimeTraceID, "Initializing router")
 
 	r := chi.NewRouter()
+	conf := deps.Config
 
 	r.Use(handler.TraceID)
 	r.Use(handler.Logger(log))
@@ -36,9 +45,8 @@ func NewRouter(sessionRepo SessionRepository, clipboardRepo ClipboardRepository,
 		AllowCredentials: conf.CORS.AllowCredentials,
 	}))
 
-	sessionHandler := NewSessionHandler(sessionRepo, clipboardRepo, log)
-
-	r.Route("/sessions", sessionHandler.RegisterRoutes)
+	r.Route("/", NewAuthHandler(deps.UserService, deps.CookieProcessor, log).RegisterRoutes)
+	r.Route("/sessions", NewSessionHandler(deps.SessionRepository, deps.ClipboardRepository, log).RegisterRoutes)
 
 	r.NotFound(handleNotFound(log))
 	r.MethodNotAllowed(handleMethodNotAllowed(log))

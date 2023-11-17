@@ -3,20 +3,17 @@ package dal
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"time"
 
 	bolt "go.etcd.io/bbolt"
+
+	"github.com/Roma7-7-7/shared-clipboard/tools"
 )
 
 const (
-	idLength       = 6
+	joinKeyLength  = 6
 	sessionsBucket = "sessions"
 	joinKeysBucket = "joinKeys"
-)
-
-var (
-	joinKeyRunes = []rune("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 )
 
 type Session struct {
@@ -109,7 +106,7 @@ func (r *SessionRepository) Create() (*Session, error) {
 
 		res = &Session{
 			SessionID: sid,
-			JoinKey:   randomAlphanumericKey(),
+			JoinKey:   tools.RandomAlphanumericKey(joinKeyLength),
 			UpdatedAt: time.Now().UTC(),
 		}
 
@@ -133,13 +130,4 @@ func (r *SessionRepository) Create() (*Session, error) {
 	}
 
 	return res, nil
-}
-
-func randomAlphanumericKey() string {
-	b := make([]rune, idLength)
-
-	for i := range b {
-		b[i] = joinKeyRunes[rand.Intn(len(joinKeyRunes))]
-	}
-	return string(b)
 }

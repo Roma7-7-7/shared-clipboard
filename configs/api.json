@@ -9,7 +9,23 @@
     "max_age": 300,
     "allow_credentials": false
   },
+  "cookie": {
+    "path": "/",
+    "domain": "localhost"
+  },
+  "jwt": {
+    "issuer": "clipboard-share",
+    "audience": ["http://localhost:8080", "https://localhost:8080"],
+    "expire_in_minutes": 44640,
+    "secret": "secret"
+  },
   "db": {
-    "path": "./db"
+    "bolt": {
+      "path": "./db/bolt.db"
+    },
+    "sql": {
+      "driver": "postgres",
+      "data_source": "postgres://postgres:postgres@localhost:5432/clipboard-share?sslmode=disable"
+    }
   }
 }

@@ -1,0 +1,157 @@
+package domain
+
+import (
+	"context"
+	"errors"
+	"fmt"
+
+	"golang.org/x/crypto/bcrypt"
+
+	"github.com/Roma7-7-7/shared-clipboard/internal/dal"
+	"github.com/Roma7-7-7/shared-clipboard/tools"
+	"github.com/Roma7-7-7/shared-clipboard/tools/log"
+	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
+)
+
+const (
+	passwordSaltLength = 16
+)
+
+var ()
+
+type (
+	UserRepository interface {
+		Create(name, password, passwordSalt string) (*dal.User, error)
+	}
+
+	UserService struct {
+		repo UserRepository
+		log  log.TracedLogger
+	}
+)
+
+func NewUserService(repo UserRepository, log log.TracedLogger) *UserService {
+	return &UserService{
+		repo: repo,
+		log:  log,
+	}
+}
+
+func (s *UserService) Create(ctx context.Context, name, password string) (*dal.User, error) {
+	var (
+		tid = trace.ID(ctx)
+	)
+	s.log.Debugw(tid, "creating user", "name", name)
+
+	if err := validateSignup(name, password); err != nil {
+		return nil, fmt.Errorf("validate signup: %w", err)
+	}
+
+	passwordSalt := tools.RandomAlphanumericKey(passwordSaltLength)
+	salted := saltedPassword(password, passwordSalt)
+	hashed, err := bcrypt.GenerateFromPassword([]byte(salted), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, fmt.Errorf("hash password: %w", err)
+	}
+
+	user, err := s.repo.Create(name, string(hashed), passwordSalt)
+	if err != nil {
+		if errors.Is(err, dal.ErrConflictUnique) {
+			s.log.Debugw(tid, "user with this name already exists")
+			return nil, &RenderableError{
+				Code:    ErrorCodeSignupConflict,
+				Message: "User with specified name already exists",
+			}
+		}
+
+		return nil, fmt.Errorf("create user: %w", err)
+	}
+
+	s.log.Debugw(tid, "user created", "id", user.ID)
+	return user, nil
+}
+
+func validateSignup(name, password string) *RenderableError {
+	details := make(map[string]string, 2)
+
+	if err := checkName(name); err != nil {
+		details["name"] = err.Error()
+	}
+	if err := checkPassword(password); err != nil {
+		details["password"] = err.Error()
+	}
+
+	if len(details) > 0 {
+		return &RenderableError{
+			Code:    ErrorCodeSignupBadRequest,
+			Message: "Bad request",
+			Details: details,
+		}
+	}
+
+	return nil
+}
+
+func checkName(name string) error {
+	if len(name) < 3 {
+		return errors.New("name must be at least 3 characters long")
+	}
+
+	if len(name) > 255 {
+		return errors.New("name is too long")
+	}
+
+	if !(name[0] >= 'A' && name[0] <= 'Z') && !(name[0] >= 'a' && name[0] <= 'z') {
+		return errors.New("name must start with a letter")
+	}
+
+	forbiddenChars := make([]rune, 0, 10)
+	for _, c := range name {
+		switch {
+		case c >= '0' && c <= '9':
+		case c >= 'A' && c <= 'Z':
+		case c >= 'a' && c <= 'z':
+		case c == '_' || c == '-' || c == '.' || c == '@' || c == '+':
+		default:
+			forbiddenChars = append(forbiddenChars, c)
+		}
+	}
+	if len(forbiddenChars) > 0 {
+		return fmt.Errorf("name contains forbidden character(s): [%v]", string(forbiddenChars))
+	}
+
+	return nil
+}
+
+func checkPassword(password string) error {
+	if len(password) < 8 {
+		return errors.New("password must be at least 8 characters long")
+	}
+
+	var (
+		hasDigit, hasUpper, hasLower, hasSpecial bool
+	)
+
+	for _, c := range password {
+		switch {
+		case c >= '0' && c <= '9':
+			hasDigit = true
+		case c >= 'A' && c <= 'Z':
+			hasUpper = true
+		case c >= 'a' && c <= 'z':
+			hasLower = true
+		default:
+			hasSpecial = true
+		}
+	}
+
+	if !hasDigit || !hasUpper || !hasLower || !hasSpecial {
+		return errors.New("password must contain at least one uppercase letter, one lowercase letter, one digit and one special character")
+	}
+
+	return nil
+}
+
+func saltedPassword(password, passwordSalt string) string {
+	return fmt.Sprintf("%s%s", password, passwordSalt)
+}
