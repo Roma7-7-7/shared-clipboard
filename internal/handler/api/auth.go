@@ -217,11 +217,6 @@ func (h *AuthHandler) SignOut(rw http.ResponseWriter, r *http.Request) {
 			h.log.Errorw(tid, "failed to create blocked jti", err)
 		}
 	}
-	if ok, err = h.jwtRepository.IsBlockedJTIExists(jti); err != nil {
-		h.log.Errorw(tid, "failed to check blocked jti", err)
-		sendInternalServerError(ctx, rw, h.log)
-		return
-	}
 
 	http.SetCookie(rw, h.cookieProcessor.ExpireAccessToken())
 	rest.SendNoContent(ctx, rw, h.log)
