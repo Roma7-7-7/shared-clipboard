@@ -19,7 +19,7 @@ type (
 		secret []byte
 	}
 
-	claims struct {
+	Claims struct {
 		Username string `json:"username"`
 		jwt.RegisteredClaims
 	}
@@ -38,7 +38,7 @@ func NewProcessor(conf config.JWT) *Processor {
 func (p *Processor) ToAccessToken(userID uint64, name string) (string, error) {
 	now := time.Now()
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims{
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		Username: name,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    p.issuer,
@@ -57,4 +57,10 @@ func (p *Processor) ToAccessToken(userID uint64, name string) (string, error) {
 	}
 
 	return signedString, nil
+}
+
+func (p *Processor) ParseAccessToken(token string) (*jwt.Token, error) {
+	return jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+		return p.secret, nil
+	})
 }

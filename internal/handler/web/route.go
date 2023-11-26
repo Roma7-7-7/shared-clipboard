@@ -12,14 +12,14 @@ import (
 	"github.com/go-chi/httprate"
 
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
+	"github.com/Roma7-7-7/shared-clipboard/internal/domain"
 	"github.com/Roma7-7-7/shared-clipboard/internal/handler"
 	"github.com/Roma7-7-7/shared-clipboard/tools/log"
 	"github.com/Roma7-7-7/shared-clipboard/tools/rest"
-	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
 func NewRouter(conf config.Web, log log.TracedLogger) (*chi.Mux, error) {
-	log.Infow(trace.RuntimeTraceID, "Initializing web router")
+	log.Infow(domain.RuntimeTraceID, "Initializing web router")
 
 	r := chi.NewRouter()
 
@@ -44,7 +44,7 @@ func NewRouter(conf config.Web, log log.TracedLogger) (*chi.Mux, error) {
 		delegate: http.FileServer(fs),
 	})
 
-	log.Infow(trace.RuntimeTraceID, "Router initialized")
+	log.Infow(domain.RuntimeTraceID, "Router initialized")
 	return r, nil
 }
 
@@ -63,7 +63,7 @@ func (e envJson) Handle(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set(rest.ContentTypeHeader, rest.ContentTypeJavaScript)
 	rw.Header().Set(rest.LastModifiedHeader, e.lastModified)
 	if _, err := rw.Write([]byte(e.response)); err != nil {
-		e.log.Errorw(trace.ID(r.Context()), "Failed to write response", err)
+		e.log.Errorw(domain.TraceIDFromContext(r.Context()), "Failed to write response", err)
 	}
 }
 

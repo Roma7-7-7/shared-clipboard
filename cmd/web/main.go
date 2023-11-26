@@ -10,8 +10,8 @@ import (
 
 	"github.com/Roma7-7-7/shared-clipboard/cmd"
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
+	"github.com/Roma7-7-7/shared-clipboard/internal/domain"
 	"github.com/Roma7-7-7/shared-clipboard/tools/log"
-	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
 var configPath = flag.String("config", "web.json", "path to config file")
@@ -42,12 +42,12 @@ func main() {
 	traced := log.NewZapTracedLogger(l.Sugar())
 
 	if a, err = cmd.NewWeb(conf, traced); err != nil {
-		traced.Errorw(trace.RuntimeTraceID, "Create app", err)
+		traced.Errorw(domain.RuntimeTraceID, "Create app", err)
 		os.Exit(1)
 	}
 
 	if err = a.Run(context.Background()); err != nil {
-		traced.Errorw(trace.RuntimeTraceID, "Run", err)
+		traced.Errorw(domain.RuntimeTraceID, "Run", err)
 		os.Exit(1)
 	}
 }

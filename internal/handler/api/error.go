@@ -9,7 +9,6 @@ import (
 	"github.com/Roma7-7-7/shared-clipboard/internal/domain"
 	"github.com/Roma7-7-7/shared-clipboard/tools/log"
 	"github.com/Roma7-7-7/shared-clipboard/tools/rest"
-	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
 const errorResponseTmpl = `{"error": true, "code": "%s", "message": "%s"}`
@@ -27,6 +26,14 @@ func badRequestErrorBody(message string) []byte {
 
 func notFoundErrorBody(message string) []byte {
 	return []byte(fmt.Sprintf(errorResponseTmpl, domain.ErrorCodeNotFound, message))
+}
+
+func unauthorizedErrorBody(message string) []byte {
+	return []byte(fmt.Sprintf(errorResponseTmpl, domain.ErrorCodeUnauthorized, message))
+}
+
+func forbiddenErrorBody(message string) []byte {
+	return []byte(fmt.Sprintf(errorResponseTmpl, domain.ErrorCodeForbidden, message))
 }
 
 func methodNotAllowedErrorBody(method string) []byte {
@@ -49,6 +56,14 @@ func sendNotFound(ctx context.Context, rw http.ResponseWriter, message string, l
 	rest.Send(ctx, rw, http.StatusNotFound, rest.ContentTypeJSON, notFoundErrorBody(message), log)
 }
 
+func sendUnauthorized(ctx context.Context, rw http.ResponseWriter, message string, log log.TracedLogger) {
+	rest.Send(ctx, rw, http.StatusUnauthorized, rest.ContentTypeJSON, unauthorizedErrorBody(message), log)
+}
+
+func sendForbidden(ctx context.Context, rw http.ResponseWriter, message string, log log.TracedLogger) {
+	rest.Send(ctx, rw, http.StatusUnauthorized, rest.ContentTypeJSON, forbiddenErrorBody(message), log)
+}
+
 func sendErrorMarshalBody(ctx context.Context, rw http.ResponseWriter, log log.TracedLogger) {
 	rest.Send(ctx, rw, http.StatusInternalServerError, rest.ContentTypeJSON, marshalErrorBody(), log)
 }
@@ -69,7 +84,7 @@ func sendRenderableError(ctx context.Context, err *domain.RenderableError, rw ht
 		Details: err.Details,
 	})
 	if mErr != nil {
-		log.Errorw(trace.ID(ctx), "failed to marshal renderable error", mErr)
+		log.Errorw(domain.TraceIDFromContext(ctx), "failed to marshal renderable error", mErr)
 		sendErrorMarshalBody(ctx, rw, log)
 		return
 	}

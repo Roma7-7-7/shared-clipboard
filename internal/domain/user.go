@@ -10,17 +10,15 @@ import (
 	"github.com/Roma7-7-7/shared-clipboard/internal/dal"
 	"github.com/Roma7-7-7/shared-clipboard/tools"
 	"github.com/Roma7-7-7/shared-clipboard/tools/log"
-	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
 const (
 	passwordSaltLength = 16
 )
 
-var ()
-
 type (
 	UserRepository interface {
+		GetByName(name string) (*dal.User, error)
 		Create(name, password, passwordSalt string) (*dal.User, error)
 	}
 
@@ -39,7 +37,7 @@ func NewUserService(repo UserRepository, log log.TracedLogger) *UserService {
 
 func (s *UserService) Create(ctx context.Context, name, password string) (*dal.User, error) {
 	var (
-		tid = trace.ID(ctx)
+		tid = TraceIDFromContext(ctx)
 	)
 	s.log.Debugw(tid, "creating user", "name", name)
 
@@ -68,6 +66,39 @@ func (s *UserService) Create(ctx context.Context, name, password string) (*dal.U
 	}
 
 	s.log.Debugw(tid, "user created", "id", user.ID)
+	return user, nil
+}
+
+func (s *UserService) VerifyPassword(ctx context.Context, name, password string) (*dal.User, error) {
+	var (
+		tid  = TraceIDFromContext(ctx)
+		user *dal.User
+		err  error
+	)
+	s.log.Debugw(tid, "verifying password", "name", name)
+
+	if user, err = s.repo.GetByName(name); err != nil {
+		if errors.Is(err, dal.ErrNotFound) {
+			s.log.Debugw(tid, "user not found")
+			return nil, &RenderableError{
+				Code:    ErrorCodeUserNotFound,
+				Message: "User not found",
+			}
+		}
+
+		return nil, fmt.Errorf("get user by name: %w", err)
+	}
+
+	salted := saltedPassword(password, user.PasswordSalt)
+	if err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(salted)); err != nil {
+		s.log.Debugw(tid, "wrong password")
+		return nil, &RenderableError{
+			Code:    ErrorCodeSiginWrongPassword,
+			Message: "Wrong password",
+		}
+	}
+
+	s.log.Debugw(tid, "password verified", "id", user.ID)
 	return user, nil
 }
 

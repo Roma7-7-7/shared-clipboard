@@ -11,21 +11,22 @@ import (
 	"github.com/go-chi/httprate"
 
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
+	"github.com/Roma7-7-7/shared-clipboard/internal/domain"
 	"github.com/Roma7-7-7/shared-clipboard/internal/handler"
 	"github.com/Roma7-7-7/shared-clipboard/tools/log"
-	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
 type Dependencies struct {
 	Config config.API
 	CookieProcessor
 	UserService
+	JWTRepository
 	SessionRepository
 	ClipboardRepository
 }
 
 func NewRouter(deps Dependencies, log log.TracedLogger) (*chi.Mux, error) {
-	log.Infow(trace.RuntimeTraceID, "Initializing router")
+	log.Infow(domain.RuntimeTraceID, "Initializing router")
 
 	r := chi.NewRouter()
 	conf := deps.Config
@@ -45,15 +46,19 @@ func NewRouter(deps Dependencies, log log.TracedLogger) (*chi.Mux, error) {
 		AllowCredentials: conf.CORS.AllowCredentials,
 	}))
 
-	r.Route("/", NewAuthHandler(deps.UserService, deps.CookieProcessor, log).RegisterRoutes)
-	r.Route("/sessions", NewSessionHandler(deps.SessionRepository, deps.ClipboardRepository, log).RegisterRoutes)
+	r.Route("/", NewAuthHandler(deps.UserService, deps.CookieProcessor, deps.JWTRepository, log).RegisterRoutes)
+
+	r.With(NewAuthorizedMiddleware(deps.CookieProcessor, deps.JWTRepository, log).Handle).
+		Route("/v1", func(r chi.Router) {
+			r.Route("/sessions", NewSessionHandler(deps.SessionRepository, deps.ClipboardRepository, log).RegisterRoutes)
+		})
 
 	r.NotFound(handleNotFound(log))
 	r.MethodNotAllowed(handleMethodNotAllowed(log))
 
 	printRoutes(r, log)
 
-	log.Infow(trace.RuntimeTraceID, "Router initialized")
+	log.Infow(domain.RuntimeTraceID, "Router initialized")
 	return r, nil
 }
 
@@ -70,12 +75,12 @@ func handleMethodNotAllowed(log log.TracedLogger) func(rw http.ResponseWriter, r
 }
 
 func printRoutes(r *chi.Mux, logger log.TracedLogger) {
-	logger.Infow(trace.RuntimeTraceID, "Routes:")
+	logger.Infow(domain.RuntimeTraceID, "Routes:")
 	err := chi.Walk(r, func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
-		logger.Infow(trace.RuntimeTraceID, fmt.Sprintf("[%s]: '%s' has %d middlewares", method, route, len(middlewares)))
+		logger.Infow(domain.RuntimeTraceID, fmt.Sprintf("[%s]: '%s' has %d middlewares", method, route, len(middlewares)))
 		return nil
 	})
 	if err != nil {
-		logger.Errorw(trace.RuntimeTraceID, "Failed to walk routes", err)
+		logger.Errorw(domain.RuntimeTraceID, "Failed to walk routes", err)
 	}
 }
