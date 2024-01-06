@@ -31,7 +31,7 @@ func NewUserRepository(db *sql.DB) (*UserRepository, error) {
 func (r *UserRepository) GetByID(id uint64) (*User, error) {
 	var res User
 
-	if err := r.db.QueryRow("SELECT id, name, password, password_salt, created_at, updated_at FROM users WHERE id = $1", id).Scan(
+	if err := r.db.QueryRow("SELECT user_id, name, password, password_salt, created_at, updated_at FROM users WHERE user_id = $1", id).Scan(
 		&res.ID,
 		&res.Name,
 		&res.Password,
@@ -43,7 +43,7 @@ func (r *UserRepository) GetByID(id uint64) (*User, error) {
 			return nil, fmt.Errorf("user with id=%d not found: %w", id, ErrNotFound)
 		}
 
-		return nil, fmt.Errorf("get user by id=%d: %w", id, err)
+		return nil, fmt.Errorf("get user by user_id=%d: %w", id, err)
 	}
 
 	return &res, nil
@@ -52,7 +52,7 @@ func (r *UserRepository) GetByID(id uint64) (*User, error) {
 func (r *UserRepository) GetByName(name string) (*User, error) {
 	var res User
 
-	if err := r.db.QueryRow("SELECT id, name, password, password_salt, created_at, updated_at FROM users WHERE name = $1", name).Scan(
+	if err := r.db.QueryRow("SELECT user_id, name, password, password_salt, created_at, updated_at FROM users WHERE name = $1", name).Scan(
 		&res.ID,
 		&res.Name,
 		&res.Password,
@@ -77,7 +77,7 @@ func (r *UserRepository) Create(name, password, passwordSalt string) (*User, err
 		PasswordSalt: passwordSalt,
 	}
 
-	if err := r.db.QueryRow("INSERT INTO users (name, password, password_salt) VALUES ($1, $2, $3) RETURNING id, created_at, updated_at", name, password, passwordSalt).Scan(
+	if err := r.db.QueryRow("INSERT INTO users (name, password, password_salt) VALUES ($1, $2, $3) RETURNING user_id, created_at, updated_at", name, password, passwordSalt).Scan(
 		&res.ID,
 		&res.CreatedAt,
 		&res.UpdatedAt,

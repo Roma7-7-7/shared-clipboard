@@ -8,8 +8,8 @@ const RuntimeTraceID = "runtime"
 
 type (
 	Authority struct {
-		ID   uint64
-		Name string
+		UserID   uint64
+		UserName string
 	}
 
 	authorityContextKey struct{}

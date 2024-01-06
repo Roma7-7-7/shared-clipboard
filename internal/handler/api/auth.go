@@ -93,7 +93,7 @@ func (h *AuthHandler) SignUp(rw http.ResponseWriter, r *http.Request) {
 	)
 
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.log.Warnw(tid, "failed to decode request", err)
+		h.log.Debugw(tid, "failed to decode request", err)
 		sendBadRequest(ctx, rw, "failed to parse request", h.log)
 		return
 	}
@@ -139,7 +139,7 @@ func (h *AuthHandler) SignIn(rw http.ResponseWriter, r *http.Request) {
 	)
 
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.log.Warnw(tid, "failed to decode request", err)
+		h.log.Debugw(tid, "failed to decode request", err)
 		sendBadRequest(ctx, rw, "failed to parse request", h.log)
 		return
 	}
@@ -248,7 +248,7 @@ func (m *AuthorizedMiddleware) Handle(next http.Handler) http.Handler {
 		if token, err = m.cookieProcessor.AccessTokenFromRequest(r); err != nil {
 			if errors.Is(err, cookie.ErrAccessTokenNotFound) {
 				m.log.Debugw(tid, "access token cookie not found")
-				sendUnauthorized(ctx, rw, "Request is not authorized", m.log)
+				sendUnauthorized(ctx, rw, m.log)
 				return
 			}
 			if errors.Is(err, cookie.ErrParseAccessToken) {
@@ -321,7 +321,7 @@ func toAuthority(claims jwt.MapClaims) (*domain.Authority, error) {
 	}
 
 	return &domain.Authority{
-		ID:   id,
-		Name: name,
+		UserID:   id,
+		UserName: name,
 	}, nil
 }

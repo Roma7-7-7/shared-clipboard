@@ -45,7 +45,7 @@ func NewAPI(conf config.API, traced log.TracedLogger) (*API, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create user repository: %w", err)
 	}
-	sessionRepo, err := dal.NewSessionRepository(boltDB)
+	sessionRepo, err := dal.NewSessionRepository(sqlDB)
 	if err != nil {
 		return nil, fmt.Errorf("create session repository: %w", err)
 	}

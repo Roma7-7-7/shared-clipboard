@@ -19,3 +19,7 @@ function removeSessionID() {
 function hasSessionID() {
     return getSessionID() !== null;
 }
+
+function hideAlert(placeholder) {
+    placeholder.innerHTML = ''
+}

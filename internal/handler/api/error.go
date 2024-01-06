@@ -56,8 +56,8 @@ func sendNotFound(ctx context.Context, rw http.ResponseWriter, message string, l
 	rest.Send(ctx, rw, http.StatusNotFound, rest.ContentTypeJSON, notFoundErrorBody(message), log)
 }
 
-func sendUnauthorized(ctx context.Context, rw http.ResponseWriter, message string, log log.TracedLogger) {
-	rest.Send(ctx, rw, http.StatusUnauthorized, rest.ContentTypeJSON, unauthorizedErrorBody(message), log)
+func sendUnauthorized(ctx context.Context, rw http.ResponseWriter, log log.TracedLogger) {
+	rest.Send(ctx, rw, http.StatusUnauthorized, rest.ContentTypeJSON, unauthorizedErrorBody("Request is not authorized"), log)
 }
 
 func sendForbidden(ctx context.Context, rw http.ResponseWriter, message string, log log.TracedLogger) {
@@ -79,7 +79,7 @@ func sendInternalServerError(ctx context.Context, rw http.ResponseWriter, log lo
 func sendRenderableError(ctx context.Context, err *domain.RenderableError, rw http.ResponseWriter, log log.TracedLogger) {
 	bytes, mErr := json.Marshal(genericErrorResponse{
 		Error:   true,
-		Code:    string(err.Code),
+		Code:    err.Code.Value,
 		Message: err.Message,
 		Details: err.Details,
 	})
@@ -89,5 +89,5 @@ func sendRenderableError(ctx context.Context, err *domain.RenderableError, rw ht
 		return
 	}
 
-	rest.Send(ctx, rw, http.StatusBadRequest, rest.ContentTypeJSON, bytes, log)
+	rest.Send(ctx, rw, err.Code.StatusCode, rest.ContentTypeJSON, bytes, log)
 }

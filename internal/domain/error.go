@@ -1,26 +1,32 @@
 package domain
 
-import "fmt"
+import (
+	"fmt"
+	"net/http"
+)
 
 type (
-	ErrorCode string
+	ErrorCode struct {
+		Value      string
+		StatusCode int
+	}
 )
 
 var (
-	ErrorBadRequest              = ErrorCode("ERR_0400")
-	ErrorCodeUnauthorized        = ErrorCode("ERR_0401")
-	ErrorCodeForbidden           = ErrorCode("ERR_0403")
-	ErrorCodeNotFound            = ErrorCode("ERR_0404")
-	ErrorCodeMethodNotAllowed    = ErrorCode("ERR_0405")
-	ErrorCodeInternalServerError = ErrorCode("ERR_0500")
+	ErrorBadRequest              = ErrorCode{"ERR_0400", http.StatusBadRequest}
+	ErrorCodeUnauthorized        = ErrorCode{"ERR_0401", http.StatusUnauthorized}
+	ErrorCodeForbidden           = ErrorCode{"ERR_0403", http.StatusForbidden}
+	ErrorCodeNotFound            = ErrorCode{"ERR_0404", http.StatusNotFound}
+	ErrorCodeMethodNotAllowed    = ErrorCode{"ERR_0405", http.StatusMethodNotAllowed}
+	ErrorCodeInternalServerError = ErrorCode{"ERR_0500", http.StatusInternalServerError}
 
-	ErrorCodeMarshalResponse = ErrorCode("ERR_1001")
+	ErrorCodeMarshalResponse = ErrorCode{"ERR_1001", http.StatusInternalServerError}
 
-	ErrorCodeSignupBadRequest   = ErrorCode("ERR_2101")
-	ErrorCodeSignupConflict     = ErrorCode("ERR_2102")
-	ErrorCodeSiginWrongPassword = ErrorCode("ERR_2103")
+	ErrorCodeSignupBadRequest   = ErrorCode{"ERR_2101", http.StatusBadRequest}
+	ErrorCodeSignupConflict     = ErrorCode{"ERR_2102", http.StatusBadRequest}
+	ErrorCodeSiginWrongPassword = ErrorCode{"ERR_2103", http.StatusForbidden}
 
-	ErrorCodeUserNotFound = ErrorCode("ERR_2201")
+	ErrorCodeUserNotFound = ErrorCode{"ERR_2201", http.StatusBadRequest}
 )
 
 type RenderableError struct {

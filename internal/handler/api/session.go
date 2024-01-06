@@ -1,11 +1,13 @@
 package api
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -15,29 +17,36 @@ import (
 	"github.com/Roma7-7-7/shared-clipboard/tools/rest"
 )
 
-type Session struct {
-	SessionID uint64 `json:"session_id"`
-	JoinKey   string `json:"join_key"`
-	UpdatedAt int64  `json:"updated_at"`
-}
+type (
+	createSessionRequest struct {
+		Name string `json:"name"`
+	}
 
-type SessionRepository interface {
-	GetByID(id uint64) (*dal.Session, error)
-	GetByJoinKey(key string) (*dal.Session, error)
-	Create() (*dal.Session, error)
-}
+	Session struct {
+		SessionID uint64 `json:"session_id"`
+		Name      string `json:"name"`
+		CreatedAt int64  `json:"created_at"`
+		UpdatedAt int64  `json:"updated_at"`
+	}
 
-type ClipboardRepository interface {
-	GetBySessionID(id uint64) (*dal.Clipboard, error)
-	SetBySessionID(id uint64, contentType string, content []byte) (*dal.Clipboard, error)
-}
+	SessionRepository interface {
+		GetByID(id uint64) (*dal.Session, error)
+		GetAllByUserID(userID uint64) ([]*dal.Session, error)
+		Create(name string, userID uint64) (*dal.Session, error)
+	}
 
-type SessionHandler struct {
-	sessionRepo   SessionRepository
-	clipboardRepo ClipboardRepository
+	ClipboardRepository interface {
+		GetBySessionID(id uint64) (*dal.Clipboard, error)
+		SetBySessionID(id uint64, contentType string, content []byte) (*dal.Clipboard, error)
+	}
 
-	log log.TracedLogger
-}
+	SessionHandler struct {
+		sessionRepo   SessionRepository
+		clipboardRepo ClipboardRepository
+
+		log log.TracedLogger
+	}
+)
 
 func NewSessionHandler(sessionRepo SessionRepository, clipboardRepo ClipboardRepository, log log.TracedLogger) *SessionHandler {
 	return &SessionHandler{
@@ -49,7 +58,7 @@ func NewSessionHandler(sessionRepo SessionRepository, clipboardRepo ClipboardRep
 
 func (s *SessionHandler) RegisterRoutes(r chi.Router) {
 	r.Post("/", s.Create)
-	r.Get("/", s.GetByJoinKey)
+	r.Get("/", s.GetAllByUserID)
 	r.Get("/{sessionID}", s.GetByID)
 	r.Get("/{sessionID}/clipboard", s.GetClipboard)
 	r.Put("/{sessionID}/clipboard", s.SetClipboard)
@@ -100,41 +109,36 @@ func (s *SessionHandler) GetByID(rw http.ResponseWriter, r *http.Request) {
 	rest.Send(r.Context(), rw, http.StatusOK, rest.ContentTypeJSON, body, s.log)
 }
 
-func (s *SessionHandler) GetByJoinKey(rw http.ResponseWriter, r *http.Request) {
+func (s *SessionHandler) GetAllByUserID(rw http.ResponseWriter, r *http.Request) {
 	var (
-		joinKey string
-		session *dal.Session
-		body    []byte
-		err     error
+		body []byte
 	)
 
-	joinKey = r.URL.Query().Get("joinKey")
-	if joinKey == "" {
-		s.log.Debugw(domain.TraceIDFromContext(r.Context()), "joinKey is empty")
-		sendBadRequest(r.Context(), rw, "joinKey param is required", s.log)
+	auth, ok := domain.AuthorityFromContext(r.Context())
+	if !ok {
+		s.log.Debugw(domain.TraceIDFromContext(r.Context()), "user not found in context")
+		sendUnauthorized(r.Context(), rw, s.log)
 		return
 	}
 
-	if session, err = s.sessionRepo.GetByJoinKey(joinKey); err != nil {
-		if errors.Is(err, dal.ErrNotFound) {
-			s.log.Debugw(domain.TraceIDFromContext(r.Context()), "session not found", "id", joinKey)
-			sendNotFound(r.Context(), rw, "Session with provided join key not found", s.log)
-			return
-		}
-
-		s.log.Errorw(domain.TraceIDFromContext(r.Context()), "failed to get session", err)
+	sessions, err := s.sessionRepo.GetAllByUserID(auth.UserID)
+	if err != nil {
+		s.log.Errorw(domain.TraceIDFromContext(r.Context()), "failed to get sessions", err)
 		sendInternalServerError(r.Context(), rw, s.log)
 		return
 	}
 
-	s.log.Debugw(domain.TraceIDFromContext(r.Context()), "Got session", "id", session.SessionID)
-	if body, err = rest.ToJSON(toDTO(session)); err != nil {
-		s.log.Errorw(domain.TraceIDFromContext(r.Context()), "failed to marshal session", err)
+	s.log.Debugw(domain.TraceIDFromContext(r.Context()), "Got sessions", "count", len(sessions))
+	res := make([]*Session, 0, len(sessions))
+	for _, session := range sessions {
+		res = append(res, toDTO(session))
+	}
+	if body, err = rest.ToJSON(res); err != nil {
+		s.log.Errorw(domain.TraceIDFromContext(r.Context()), "failed to marshal sessions", err)
 		sendErrorMarshalBody(r.Context(), rw, s.log)
 		return
 	}
 
-	rw.Header().Set(rest.LastModifiedHeader, session.UpdatedAt.Format(http.TimeFormat))
 	rest.Send(r.Context(), rw, http.StatusOK, rest.ContentTypeJSON, body, s.log)
 }
 
@@ -145,7 +149,27 @@ func (s *SessionHandler) Create(rw http.ResponseWriter, r *http.Request) {
 		err     error
 	)
 
-	if session, err = s.sessionRepo.Create(); err != nil {
+	user, ok := domain.AuthorityFromContext(r.Context())
+	if !ok {
+		s.log.Debugw(domain.TraceIDFromContext(r.Context()), "user not found in context")
+		sendUnauthorized(r.Context(), rw, s.log)
+		return
+	}
+
+	var req createSessionRequest
+	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
+		s.log.Debugw(domain.TraceIDFromContext(r.Context()), "failed to decode body", err)
+		sendBadRequest(r.Context(), rw, "failed to parse request", s.log)
+		return
+	}
+
+	if strings.TrimSpace(req.Name) == "" {
+		s.log.Debugw(domain.TraceIDFromContext(r.Context()), "name is empty")
+		sendBadRequest(r.Context(), rw, "name param is required", s.log)
+		return
+	}
+
+	if session, err = s.sessionRepo.Create(req.Name, user.UserID); err != nil {
 		s.log.Errorw(domain.TraceIDFromContext(r.Context()), "failed to create session", err)
 		sendInternalServerError(r.Context(), rw, s.log)
 		return
@@ -266,7 +290,8 @@ func (s *SessionHandler) SetClipboard(rw http.ResponseWriter, r *http.Request) {
 func toDTO(session *dal.Session) *Session {
 	return &Session{
 		SessionID: session.SessionID,
-		JoinKey:   session.JoinKey,
+		Name:      session.Name,
+		CreatedAt: session.CreatedAt.UnixMilli(),
 		UpdatedAt: session.UpdatedAt.UnixMilli(),
 	}
 }
