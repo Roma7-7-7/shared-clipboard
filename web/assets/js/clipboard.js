@@ -73,10 +73,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }, 1000);
 });
 
-function hideAlert(placeholder) {
-    placeholder.innerHTML = ''
-}
-
 function showSuccessAlert(placeholder, message) {
     placeholder.innerHTML = ''
 

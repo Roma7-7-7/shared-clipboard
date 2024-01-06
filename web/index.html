@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="assets/css/main.css">
     <script src="assets/js/env.js"></script>
     <script src="assets/js/main.js"></script>
+    <script src="assets/js/index.js"></script>
 </head>
 <body>
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
@@ -14,8 +15,12 @@
         <a class="navbar-brand" href="index.html">Clipboard share</a>
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0"></ul>
-            <a href="start.html" class="btn btn-outline-primary me-2">Start</a>
-            <a href="join.html" class="btn btn-outline-secondary me-2">Join</a>
+            <a href="#" class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#signInModal">
+                Sign In
+            </a>
+            <a href="#" class="btn btn-outline-secondary me-2" data-bs-toggle="modal" data-bs-target="#signUpModal">
+                Sign Up
+            </a>
         </div>
     </div>
 </nav>
@@ -24,7 +29,68 @@
     <div class="row">
         <div class="col-lg-12">
             <p class="fs-5">The purpose of this service is to share clipboard content across multiple hosts.</p>
-            <p>You may use <a href="start.html">Start</a> button to start new clipboard session or <a href="join.html">Join</a> if you want to join already started session.</p>
+            <p>Please <a href="#" data-bs-toggle="modal" data-bs-target="#signInModal">sign in</a> or <a href="#" data-bs-toggle="modal" data-bs-target="#signUpModal">sign up</a> to start using it.</p>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="signInModal" tabindex="-1" aria-labelledby="signInModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="signInModalLabel">Sign In</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="signInForm" class="needs-validation" novalidate>
+                    <div class="mb-3">
+                        <label for="signInUserName" class="form-label">User Name</label>
+                        <input type="text" class="form-control" id="signInUserName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="signInPassword" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="signInPassword" required>
+                    </div>
+                    <div id="signInModalLiveAlertPlaceholder"></div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Sign Up</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="signUpModal" tabindex="-1" aria-labelledby="signUpModalLabel" aria-hidden="true" on-valid="signUp">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="signUpModalLabel">Sign Up</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="signUpForm" class="needs-validation" novalidate>
+                    <div class="mb-3">
+                        <label for="signUpUserName" class="form-label">User Name</label>
+                        <input type="text" class="form-control" id="signUpUserName" required>
+                        <div class="invalid-feedback">
+                            User name is required and must be at least 3 characters long.
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="signUpPassword" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="signUpPassword" required>
+                        <div class="invalid-feedback">
+                            Password must be at least 8 character long and contain at least one uppercase letter, one lowercase letter, one digit and one special character
+                        </div>
+                    </div>
+                    <div id="signUpModalLiveAlertPlaceholder"></div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Sign Up</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>

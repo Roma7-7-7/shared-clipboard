@@ -9,8 +9,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/pkg/errors"
 
+	"github.com/Roma7-7-7/shared-clipboard/internal/domain"
 	"github.com/Roma7-7-7/shared-clipboard/tools/log"
-	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
 type App struct {
@@ -45,20 +45,20 @@ func (a *App) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
-			a.log.Infow(trace.RuntimeTraceID, "Shutting down server")
+			a.log.Infow(domain.RuntimeTraceID, "Shutting down server")
 			if err := s.Shutdown(ctx); err != nil {
-				a.log.Errorw(trace.RuntimeTraceID, "Shutdown server", err)
+				a.log.Errorw(domain.RuntimeTraceID, "Shutdown server", err)
 			}
-			a.log.Infow(trace.RuntimeTraceID, "Server stopped")
+			a.log.Infow(domain.RuntimeTraceID, "Server stopped")
 			return
 		}
 	}()
 
-	a.log.Infow(trace.RuntimeTraceID, "Starting server", "address", addr)
+	a.log.Infow(domain.RuntimeTraceID, "Starting server", "address", addr)
 	if err := s.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("server listen: %w", err)
 	}
-	a.log.Infow(trace.RuntimeTraceID, "Server stopped")
+	a.log.Infow(domain.RuntimeTraceID, "Server stopped")
 
 	return nil
 }

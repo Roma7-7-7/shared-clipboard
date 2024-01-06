@@ -11,6 +11,14 @@ test:
 clean:
 	rm -rf ./bin
 
+# Migrate
+# https://github.com/golang-migrate/migrate
+migrate-up:
+	migrate -path ./migrations/sql -database "postgres://postgres:postgres@localhost:5432/clipboard-share?sslmode=disable" up
+
+migrate-down:
+	migrate -path ./migrations/sql -database "postgres://postgres:postgres@localhost:5432/clipboard-share?sslmode=disable" down
+
 # Build web
 build-web:
 	rm -rf ./bin/web

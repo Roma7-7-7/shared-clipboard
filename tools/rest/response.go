@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/Roma7-7-7/shared-clipboard/internal/domain"
 	"github.com/Roma7-7-7/shared-clipboard/tools/log"
-	"github.com/Roma7-7-7/shared-clipboard/tools/trace"
 )
 
 const (
@@ -33,6 +33,10 @@ func Send(ctx context.Context, rw http.ResponseWriter, status int, contentType s
 	}
 	rw.WriteHeader(status)
 	if _, err := rw.Write(body); err != nil {
-		log.Errorw(trace.ID(ctx), "Failed to write response", err)
+		log.Errorw(domain.TraceIDFromContext(ctx), "Failed to write response", err)
 	}
+}
+
+func SendNoContent(ctx context.Context, rw http.ResponseWriter, log log.TracedLogger) {
+	Send(ctx, rw, http.StatusNoContent, "", nil, log)
 }
