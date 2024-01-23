@@ -32,7 +32,7 @@ export default function Navbar() {
 }
 
 const signInTitle = "Sign In";
-const defaultPasswordFeedback = "Password must be at least 8 characters long and contain at least one upper case letter, at least one lower case, one number and one special character";
+const defaultPasswordFeedback = "Password must be at least 8 chara¡cters long and contain at least one upper case letter, at least one lower case, one number and one special character";
 
 function AuthModal({show, onHide, title}) {
     const isSignUp = title !== signInTitle;

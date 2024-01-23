@@ -21,31 +21,31 @@ type genericErrorResponse struct {
 }
 
 func badRequestErrorBody(message string) []byte {
-	return []byte(fmt.Sprintf(errorResponseTmpl, domain.ErrorBadRequest, message))
+	return []byte(fmt.Sprintf(errorResponseTmpl, domain.ErrorBadRequest.Value, message))
 }
 
 func notFoundErrorBody(message string) []byte {
-	return []byte(fmt.Sprintf(errorResponseTmpl, domain.ErrorCodeNotFound, message))
+	return []byte(fmt.Sprintf(errorResponseTmpl, domain.ErrorCodeNotFound.Value, message))
 }
 
 func unauthorizedErrorBody(message string) []byte {
-	return []byte(fmt.Sprintf(errorResponseTmpl, domain.ErrorCodeUnauthorized, message))
+	return []byte(fmt.Sprintf(errorResponseTmpl, domain.ErrorCodeUnauthorized.Value, message))
 }
 
 func forbiddenErrorBody(message string) []byte {
-	return []byte(fmt.Sprintf(errorResponseTmpl, domain.ErrorCodeForbidden, message))
+	return []byte(fmt.Sprintf(errorResponseTmpl, domain.ErrorCodeForbidden.Value, message))
 }
 
 func methodNotAllowedErrorBody(method string) []byte {
-	return []byte(fmt.Sprintf(errorResponseTmpl, domain.ErrorCodeMethodNotAllowed, fmt.Sprintf("Method %s is not allowed", method)))
+	return []byte(fmt.Sprintf(errorResponseTmpl, domain.ErrorCodeMethodNotAllowed.Value, fmt.Sprintf("Method %s is not allowed", method)))
 }
 
 func internalServerErrorBody() []byte {
-	return []byte(fmt.Sprintf(errorResponseTmpl, domain.ErrorCodeInternalServerError, "Internal server error"))
+	return []byte(fmt.Sprintf(errorResponseTmpl, domain.ErrorCodeInternalServerError.Value, "Internal server error"))
 }
 
 func marshalErrorBody() []byte {
-	return []byte(fmt.Sprintf(errorResponseTmpl, domain.ErrorCodeMarshalResponse, "Failed to marshal response"))
+	return []byte(fmt.Sprintf(errorResponseTmpl, domain.ErrorCodeMarshalResponse.Value, "Failed to marshal response"))
 }
 
 func sendBadRequest(ctx context.Context, rw http.ResponseWriter, message string, log log.TracedLogger) {
