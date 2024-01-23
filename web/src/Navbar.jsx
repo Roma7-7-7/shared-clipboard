@@ -3,12 +3,60 @@ import {useState} from 'react';
 import {Container, Row, Col, Navbar as NavbarB, Nav, Button, Modal, Form, InputGroup, Alert} from "react-bootstrap";
 
 export default function Navbar() {
-    const [showModal, setShowModal] = useState(false);
-    const [modalTitle, setModalTitle] = useState("Sign In");
+    const [showAuthModal, setShowAuthModal] = useState(false);
+    const [authModalTitle, setAuthModalTitle] = useState("Sign In");
+    const [alertMsg, setAlertMsg] = useState(null);
+    const [signedIn, setSignedIn] = useState(false);
+
+    function onSignOut() {
+        fetch(apiBaseURL + '/signout', {
+            "method": "POST",
+            "headers": {"Content-Type": "application/json"},
+            "body": JSON.stringify({})
+        })
+            .then(response => {
+                if (response.status === 204) {
+                    return Promise.resolve({"error": false, "message": "Signed out successfully"});
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data["error"]) {
+                    setSignedIn(false);
+                    return;
+                }
+
+                setAlertMsg(data["message"]);
+            })
+            .catch(error => {
+                console.error('Error:', error)
+                setAlertMsg("Unexpected error occurred");
+            })
+    }
 
     function handleModalShow(title) {
-        setModalTitle(title);
-        setShowModal(true);
+        setAuthModalTitle(title);
+        setShowAuthModal(true);
+    }
+
+    let rightNav = (<>
+        <Nav>
+            <Button variant="outline-primary me-2" onClick={() => handleModalShow('Sign In')}>Sign In</Button>
+            <Button variant="outline-secondary me-2" onClick={() => handleModalShow('Sign Up')}>Sign Up</Button>
+        </Nav>
+    </>)
+
+    if (signedIn) {
+        rightNav = (<>
+            <Nav>
+                <Button variant="outline-primary me-2" onClick={onSignOut}>Sign Out</Button>
+            </Nav>
+        </>)
+    }
+
+    function onSignedIn() {
+        setShowAuthModal(false);
+        setSignedIn(true);
     }
 
     return (
@@ -18,15 +66,21 @@ export default function Navbar() {
                     <NavbarB.Brand href="#home">Clipboard share</NavbarB.Brand>
                     <NavbarB.Collapse>
                         <Nav className="me-auto"></Nav>
-                        <Nav>
-                            <Button variant="outline-primary me-2" onClick={() => handleModalShow('Sign In')}>Sign In</Button>
-                            <Button variant="outline-secondary me-2" onClick={() => handleModalShow('Sign Up')}>Sign Up</Button>
-                        </Nav>
+                        {rightNav}
                     </NavbarB.Collapse>
                 </Container>
             </NavbarB>
 
-            <AuthModal show={showModal} onHide={() => setShowModal(false)} title={modalTitle} />
+            <AuthModal show={showAuthModal} onHide={() => setShowAuthModal(false)} title={authModalTitle} onSignedIn={onSignedIn} />
+            <Modal show={alertMsg !== null} onHide={() => setAlertMsg(null)}>
+                <Modal.Header closeButton>
+                </Modal.Header>
+                <Modal.Body>
+                    <Alert variant="danger">
+                        {alertMsg}
+                    </Alert>
+                </Modal.Body>
+            </Modal>
         </>
     )
 }
@@ -34,7 +88,7 @@ export default function Navbar() {
 const signInTitle = "Sign In";
 const defaultPasswordFeedback = "Password must be at least 8 chara¡cters long and contain at least one upper case letter, at least one lower case, one number and one special character";
 
-function AuthModal({show, onHide, title}) {
+function AuthModal({show, onHide, title, onSignedIn}) {
     const isSignUp = title !== signInTitle;
     const [userName, setUserName] = useState("");
     const [usernameFeedback, setUsernameFeedback] = useState(null);
@@ -77,7 +131,7 @@ function AuthModal({show, onHide, title}) {
 
                 setPasswordFeedback("");
             },
-            "doSubmit": function (event) {
+            "doSubmit": function (event, onSignedIn) {
                 if (usernameFeedback !== "" || passwordFeedback !== "") {
                     event.preventDefault();
                     setAlertMsg("Both username and password are required");
@@ -93,17 +147,20 @@ function AuthModal({show, onHide, title}) {
                         return response.json();
                     })
                     .then(data => {
-                        if (data["error"]) {
-                            if (data["code"] === "ERR_2201") {
-                                setAlertMsg("User with such name does not exist");
-                                    return
-                            }
-                            if (data["code"] === "ERR_2103") {
-                                setAlertMsg("Password is incorrect");
-                                return
-                            }
-                            setAlertMsg(data["message"]);
+                        if (!data["error"]) {
+                            onSignedIn();
+                            return;
                         }
+
+                        if (data["code"] === "ERR_2201") {
+                            setAlertMsg("User with such name does not exist");
+                                return
+                        }
+                        if (data["code"] === "ERR_2103") {
+                            setAlertMsg("Password is incorrect");
+                            return
+                        }
+                        setAlertMsg(data["message"]);
                     })
                     .catch(error => {
                         console.error('Error:', error)
@@ -178,7 +235,7 @@ function AuthModal({show, onHide, title}) {
 
                 setPasswordFeedback("");
             },
-            "doSubmit": function (event) {
+            "doSubmit": function (event, onSignedIn) {
                 if (usernameFeedback !== "" || passwordFeedback !== "") {
                     event.preventDefault();
                     setAlertMsg("Both username and password are required");
@@ -194,17 +251,20 @@ function AuthModal({show, onHide, title}) {
                         return response.json();
                     })
                     .then(data => {
-                        if (data["error"]) {
-                            if (data["code"] === "ERR_2101") {
-                                setAlertMsg("Password must be at least 8 character long and contain at least one uppercase letter, one lowercase letter, one digit and one special character")
-                                return
-                            }
-                            if (data["code"] === "ERR_2102") {
-                                setAlertMsg("User with such name already exists")
-                                return
-                            }
-                            setAlertMsg(data["message"]);
+                        if (!data["error"]) {
+                            onSignedIn();
+                            return;
                         }
+
+                        if (data["code"] === "ERR_2101") {
+                            setAlertMsg("Password must be at least 8 character long and contain at least one uppercase letter, one lowercase letter, one digit and one special character")
+                            return
+                        }
+                        if (data["code"] === "ERR_2102") {
+                            setAlertMsg("User with such name already exists")
+                            return
+                        }
+                        setAlertMsg(data["message"]);
                     })
                     .catch(error => {
                         console.error('Error:', error)
@@ -224,10 +284,6 @@ function AuthModal({show, onHide, title}) {
         setPassword(event.target.value);
         context[title]["passwordChange"](event);
     }
-    let doSubmit = (event) => {
-        setAlertMsg("");
-        context[title]["doSubmit"](event);
-    }
 
     const handleSubmit = (event) => {
         setAlertMsg("");
@@ -239,7 +295,11 @@ function AuthModal({show, onHide, title}) {
             return;
         }
 
-        doSubmit(event);
+        setAlertMsg("");
+        context[title]["doSubmit"](event, () => {
+            onHide();
+            onSignedIn();
+        });
     };
 
     return (
