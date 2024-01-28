@@ -15,9 +15,9 @@ import (
 	"github.com/Roma7-7-7/shared-clipboard/internal/dal/local"
 	sql2 "github.com/Roma7-7-7/shared-clipboard/internal/dal/sql"
 	"github.com/Roma7-7-7/shared-clipboard/internal/domain"
-	"github.com/Roma7-7-7/shared-clipboard/internal/handler"
-	"github.com/Roma7-7-7/shared-clipboard/internal/handler/cookie"
-	"github.com/Roma7-7-7/shared-clipboard/internal/handler/jwt"
+	"github.com/Roma7-7-7/shared-clipboard/internal/handle"
+	"github.com/Roma7-7-7/shared-clipboard/internal/handle/cookie"
+	"github.com/Roma7-7-7/shared-clipboard/internal/handle/jwt"
 	"github.com/Roma7-7-7/shared-clipboard/tools/log"
 )
 
@@ -68,7 +68,7 @@ func NewAPI(conf config.App, traced log.TracedLogger) (*App, error) {
 	cookieProcessor := cookie.NewProcessor(jwtProcessor, conf.Cookie)
 
 	traced.Infow(domain.RuntimeTraceID, "Creating router")
-	h, err := handler.NewRouter(handler.Dependencies{
+	h, err := handle.NewRouter(handle.Dependencies{
 		Config:              conf,
 		CookieProcessor:     cookieProcessor,
 		UserService:         userService,

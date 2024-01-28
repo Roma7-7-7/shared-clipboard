@@ -1,4 +1,4 @@
-package handler
+package handle
 
 import (
 	"errors"
@@ -12,7 +12,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/Roma7-7-7/shared-clipboard/internal/domain"
-	"github.com/Roma7-7-7/shared-clipboard/internal/handler/cookie"
+	"github.com/Roma7-7-7/shared-clipboard/internal/handle/cookie"
 	"github.com/Roma7-7-7/shared-clipboard/tools/log"
 )
 

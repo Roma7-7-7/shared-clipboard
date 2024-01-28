@@ -1,4 +1,4 @@
-package handler
+package handle
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 
 	"github.com/Roma7-7-7/shared-clipboard/internal/dal"
 	"github.com/Roma7-7-7/shared-clipboard/internal/domain"
-	"github.com/Roma7-7-7/shared-clipboard/internal/handler/cookie"
+	"github.com/Roma7-7-7/shared-clipboard/internal/handle/cookie"
 	"github.com/Roma7-7-7/shared-clipboard/tools/log"
 	"github.com/Roma7-7-7/shared-clipboard/tools/rest"
 )
