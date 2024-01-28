@@ -8,25 +8,25 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/Roma7-7-7/shared-clipboard/cmd"
+	"github.com/Roma7-7-7/shared-clipboard/internal/app"
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
 	"github.com/Roma7-7-7/shared-clipboard/internal/domain"
 	"github.com/Roma7-7-7/shared-clipboard/tools/log"
 )
 
-var configPath = flag.String("config", "web.json", "path to config file")
+var configPath = flag.String("config", "", "path to config file")
 
 func main() {
 	flag.Parse()
 
 	var (
-		conf config.Web
+		conf config.App
 		l    *zap.Logger
-		a    *cmd.Web
+		a    *app.App
 		err  error
 	)
 
-	if conf, err = config.NewWeb(*configPath); err != nil {
+	if conf, err = config.NewAPI(*configPath); err != nil {
 		stdLog.Fatalf("create config: %v", err)
 	}
 
@@ -39,9 +39,10 @@ func main() {
 			stdLog.Fatalf("create logger: %s", err)
 		}
 	}
-	traced := log.NewZapTracedLogger(l.Sugar())
+	sLog := l.Sugar()
+	traced := log.NewZapTracedLogger(sLog)
 
-	if a, err = cmd.NewWeb(conf, traced); err != nil {
+	if a, err = app.NewAPI(conf, traced); err != nil {
 		traced.Errorw(domain.RuntimeTraceID, "Create app", err)
 		os.Exit(1)
 	}

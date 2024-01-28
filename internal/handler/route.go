@@ -1,4 +1,4 @@
-package api
+package handler
 
 import (
 	"fmt"
@@ -12,12 +12,11 @@ import (
 
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
 	"github.com/Roma7-7-7/shared-clipboard/internal/domain"
-	"github.com/Roma7-7-7/shared-clipboard/internal/handler"
 	"github.com/Roma7-7-7/shared-clipboard/tools/log"
 )
 
 type Dependencies struct {
-	Config config.API
+	Config config.App
 	CookieProcessor
 	UserService
 	JWTRepository
@@ -31,8 +30,8 @@ func NewRouter(deps Dependencies, log log.TracedLogger) (*chi.Mux, error) {
 	r := chi.NewRouter()
 	conf := deps.Config
 
-	r.Use(handler.TraceID)
-	r.Use(handler.Logger(log))
+	r.Use(TraceID)
+	r.Use(Logger(log))
 	r.Use(httprate.LimitByIP(10, 1*time.Second))
 	r.Use(middleware.RedirectSlashes)
 	r.Use(middleware.Recoverer)

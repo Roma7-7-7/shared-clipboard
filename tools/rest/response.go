@@ -15,8 +15,7 @@ const (
 	LastModifiedHeader    = "Last-Modified"
 	IfModifiedSinceHeader = "If-Modified-Since"
 
-	ContentTypeJSON       = "application/json"
-	ContentTypeJavaScript = "application/javascript"
+	ContentTypeJSON = "application/json"
 )
 
 func ToJSON(data any) ([]byte, error) {

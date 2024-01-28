@@ -1,19 +1,13 @@
-package dal
+package sql
 
 import (
 	"database/sql"
 	"errors"
 	"fmt"
 	"time"
-)
 
-type Session struct {
-	SessionID uint64    `json:"session_id"`
-	Name      string    `json:"name"`
-	UserID    uint64    `json:"user_id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
+	"github.com/Roma7-7-7/shared-clipboard/internal/dal"
+)
 
 type SessionRepository struct {
 	db *sql.DB
@@ -25,8 +19,8 @@ func NewSessionRepository(db *sql.DB) (*SessionRepository, error) {
 	}, nil
 }
 
-func (r *SessionRepository) GetByID(id uint64) (*Session, error) {
-	var res Session
+func (r *SessionRepository) GetByID(id uint64) (*dal.Session, error) {
+	var res dal.Session
 
 	if err := r.db.QueryRow("SELECT session_id, user_id, created_at, updated_at FROM sessions WHERE session_id = $1", id).
 		Scan(
@@ -36,7 +30,7 @@ func (r *SessionRepository) GetByID(id uint64) (*Session, error) {
 			&res.UpdatedAt,
 		); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("session with session_id=%d not found: %w", id, ErrNotFound)
+			return nil, fmt.Errorf("session with session_id=%d not found: %w", id, dal.ErrNotFound)
 		}
 
 		return nil, fmt.Errorf("get session by session_id=%d: %w", id, err)
@@ -45,8 +39,8 @@ func (r *SessionRepository) GetByID(id uint64) (*Session, error) {
 	return &res, nil
 }
 
-func (r *SessionRepository) GetAllByUserID(userID uint64) ([]*Session, error) {
-	res := make([]*Session, 0, 10)
+func (r *SessionRepository) GetAllByUserID(userID uint64) ([]*dal.Session, error) {
+	res := make([]*dal.Session, 0, 10)
 
 	rows, err := r.db.Query("SELECT session_id, user_id, created_at, updated_at FROM sessions WHERE user_id = $1", userID)
 	if err != nil {
@@ -59,7 +53,7 @@ func (r *SessionRepository) GetAllByUserID(userID uint64) ([]*Session, error) {
 	defer rows.Close()
 
 	for rows.Next() {
-		var s Session
+		var s dal.Session
 
 		if err = rows.Scan(
 			&s.SessionID,
@@ -76,9 +70,9 @@ func (r *SessionRepository) GetAllByUserID(userID uint64) ([]*Session, error) {
 	return res, nil
 }
 
-func (r *SessionRepository) Create(name string, userID uint64) (*Session, error) {
+func (r *SessionRepository) Create(name string, userID uint64) (*dal.Session, error) {
 	now := time.Now().UTC()
-	res := &Session{
+	res := &dal.Session{
 		UserID:    userID,
 		Name:      name,
 		CreatedAt: now,

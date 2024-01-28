@@ -9,20 +9,13 @@ import (
 )
 
 type (
-	API struct {
+	App struct {
 		Dev    bool   `json:"dev"`
 		Port   int    `json:"port"`
 		CORS   CORS   `json:"cors"`
 		Cookie Cookie `json:"cookie"`
 		JWT    JWT    `json:"jwt"`
 		DB     DB     `json:"db"`
-	}
-
-	Web struct {
-		Dev             bool   `json:"dev"`
-		Port            int    `json:"port"`
-		StaticFilesPath string `json:"static_files_path"`
-		APIHost         string `json:"api_host"`
 	}
 
 	Cookie struct {
@@ -61,16 +54,8 @@ type (
 	}
 )
 
-func NewWeb(confPath string) (Web, error) {
-	var res Web
-	if err := readConfig(confPath, &res); err != nil {
-		return res, fmt.Errorf("read config: %w", err)
-	}
-	return res, validateWeb(res)
-}
-
-func NewAPI(confPath string) (API, error) {
-	var api API
+func NewAPI(confPath string) (App, error) {
+	var api App
 	if err := readConfig(confPath, &api); err != nil {
 		return api, fmt.Errorf("read config: %w", err)
 	}
@@ -98,26 +83,7 @@ func readConfig(path string, target any) error {
 	return nil
 }
 
-func validateWeb(conf Web) error {
-	res := make([]string, 0, 3)
-	if conf.Port <= 0 || conf.Port > 65535 {
-		return fmt.Errorf("invalid port: %d", conf.Port)
-	}
-	if conf.StaticFilesPath == "" {
-		res = append(res, "empty static files path")
-	}
-	if conf.APIHost == "" {
-		res = append(res, "empty api host")
-	}
-
-	if len(res) != 0 {
-		return fmt.Errorf("invalid web config: [%s]", strings.Join(res, "; "))
-	}
-
-	return nil
-}
-
-func validateAPI(api API) error {
+func validateAPI(api App) error {
 	res := make([]string, 0, 10)
 	if api.Port <= 0 || api.Port > 65535 {
 		return fmt.Errorf("invalid port: %d", api.Port)

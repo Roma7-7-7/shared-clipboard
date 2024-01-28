@@ -30,8 +30,5 @@ bin/
 # DB
 db
 
-# Env
-web/assets/js/env.js
-
 # Mac OS specific
 **/.DS_Store
