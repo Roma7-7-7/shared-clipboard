@@ -7,7 +7,7 @@
     "allow_headers": ["Origin", "X-Requested-With", "Content-Type", "Accept", "Authorization", "If-Modified-Since"],
     "expose_headers": ["Location"],
     "max_age": 300,
-    "allow_credentials": false
+    "allow_credentials": true
   },
   "cookie": {
     "path": "/",
@@ -25,7 +25,7 @@
     },
     "sql": {
       "driver": "postgres",
-      "data_source": "postgres://postgres:postgres@localhost:5432/clipboard-share?sslmode=disable"
+      "data_source": "postgres://postgres:postgres@postgres:5432/clipboard-share?sslmode=disable"
     }
   }
 }

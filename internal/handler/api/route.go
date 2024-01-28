@@ -51,6 +51,7 @@ func NewRouter(deps Dependencies, log log.TracedLogger) (*chi.Mux, error) {
 	r.With(NewAuthorizedMiddleware(deps.CookieProcessor, deps.JWTRepository, log).Handle).
 		Route("/v1", func(r chi.Router) {
 			r.Route("/sessions", NewSessionHandler(deps.SessionRepository, deps.ClipboardRepository, log).RegisterRoutes)
+			r.Route("/user", NewUserHandler(log).RegisterRoutes)
 		})
 
 	r.NotFound(handleNotFound(log))
