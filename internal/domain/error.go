@@ -36,5 +36,5 @@ type RenderableError struct {
 }
 
 func (e *RenderableError) Error() string {
-	return fmt.Sprintf("%s: %s", e.Code, e.Message)
+	return fmt.Sprintf("%s: %s", e.Code.Value, e.Message)
 }
