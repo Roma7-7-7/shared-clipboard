@@ -10,6 +10,7 @@ test:
 # Clean
 clean:
 	rm -rf ./bin
+	rm -rf ./web/dist
 
 # Migrate
 # https://github.com/golang-migrate/migrate
@@ -22,29 +23,22 @@ migrate-down:
 # Build web
 build-web:
 	rm -rf ./bin/web
-	go build -o bin/web ./cmd/web/main.go
+	mkdir -p ./bin/web
+	cd ./web && npm install && vite build --outDir ../bin/web
 
 # Build api
-build-api:
-	rm -rf ./bin/api
-	go build -o bin/api ./cmd/api/main.go
-
-# Build dev
-build-dev:
-	rm -rf ./bin/dev
-	go build -o bin/dev ./cmd/dev/main.go
+build-app:
+	rm -rf ./bin/app
+	go mod download
+	go build -o bin/app/app ./cmd/app/main.go
 
 # Build all
-build-all: build-web build-api build-dev
+build-all: build-web build-app
 
 # Run web
-run-web: build-web
-	./bin/web -config ./configs/web.json
+run-web:
+	cd ./web && npm install && vite
 
 # Run api
-run-api: build-api
-	./bin/api -config ./configs/api.json
-
-# Run dev
-run-dev: build-dev
-	./bin/dev -api-config ./configs/api.json -web-config ./configs/web.json
+run-app:
+	go run ./cmd/app/main.go --config ./configs/app.json
