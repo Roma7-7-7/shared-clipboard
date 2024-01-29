@@ -1,6 +1,0 @@
-{
-  "dev": true,
-  "port": 80,
-  "static_files_path": "web",
-  "api_host": "http://localhost:8080"
-}

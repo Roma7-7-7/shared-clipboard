@@ -1,0 +1,31 @@
+{
+  "dev": true,
+  "port": 8080,
+  "cors": {
+    "allow_origins": ["http://localhost:5173"],
+    "allow_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "allow_headers": ["Origin", "X-Requested-With", "Content-Type", "Accept", "Authorization", "If-Modified-Since"],
+    "expose_headers": ["Location"],
+    "max_age": 300,
+    "allow_credentials": true
+  },
+  "cookie": {
+    "path": "/",
+    "domain": "localhost"
+  },
+  "jwt": {
+    "issuer": "clipboard-share",
+    "audience": ["http://localhost:8080", "https://localhost:8080"],
+    "expire_in_minutes": 44640,
+    "secret": "secret"
+  },
+  "db": {
+    "bolt": {
+      "path": "./db/bolt.db"
+    },
+    "sql": {
+      "driver": "postgres",
+      "data_source": "postgres://postgres:postgres@postgres:5432/clipboard-share?sslmode=disable"
+    }
+  }
+}
