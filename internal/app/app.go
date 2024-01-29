@@ -13,7 +13,7 @@ import (
 
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
 	"github.com/Roma7-7-7/shared-clipboard/internal/dal/local"
-	sql2 "github.com/Roma7-7-7/shared-clipboard/internal/dal/sql"
+	"github.com/Roma7-7-7/shared-clipboard/internal/dal/postgre"
 	"github.com/Roma7-7-7/shared-clipboard/internal/domain"
 	"github.com/Roma7-7-7/shared-clipboard/internal/handle"
 	"github.com/Roma7-7-7/shared-clipboard/internal/handle/cookie"
@@ -43,11 +43,11 @@ func NewAPI(conf config.App, traced log.TracedLogger) (*App, error) {
 	}
 
 	traced.Infow(domain.RuntimeTraceID, "Initializing repositories")
-	userRpo, err := sql2.NewUserRepository(sqlDB)
+	userRpo, err := postgre.NewUserRepository(sqlDB)
 	if err != nil {
 		return nil, fmt.Errorf("create user repository: %w", err)
 	}
-	sessionRepo, err := sql2.NewSessionRepository(sqlDB)
+	sessionRepo, err := postgre.NewSessionRepository(sqlDB)
 	if err != nil {
 		return nil, fmt.Errorf("create session repository: %w", err)
 	}

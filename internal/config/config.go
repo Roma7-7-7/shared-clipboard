@@ -50,7 +50,7 @@ type (
 
 	DB struct {
 		Bolt Bolt `json:"bolt"`
-		SQL  SQL  `json:"sql"`
+		SQL  SQL  `json:"postgre"`
 	}
 )
 
@@ -92,10 +92,10 @@ func validateAPI(api App) error {
 		res = append(res, "empty data path")
 	}
 	if api.DB.SQL.Driver == "" {
-		res = append(res, "empty sql driver")
+		res = append(res, "empty postgre driver")
 	}
 	if api.DB.SQL.DataSource == "" {
-		res = append(res, "empty sql data source")
+		res = append(res, "empty postgre data source")
 	}
 
 	if len(res) != 0 {
