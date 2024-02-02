@@ -26,7 +26,7 @@ func main() {
 		err  error
 	)
 
-	if conf, err = config.NewAPI(*configPath); err != nil {
+	if conf, err = config.NewApp(*configPath); err != nil {
 		stdLog.Fatalf("create config: %v", err)
 	}
 
@@ -42,7 +42,7 @@ func main() {
 	sLog := l.Sugar()
 	traced := log.NewZapTracedLogger(sLog)
 
-	if a, err = app.NewAPI(conf, traced); err != nil {
+	if a, err = app.NewApp(conf, traced); err != nil {
 		traced.Errorw(domain.RuntimeTraceID, "Create app", err)
 		os.Exit(1)
 	}

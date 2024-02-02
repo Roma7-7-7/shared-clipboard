@@ -29,7 +29,7 @@ type (
 	}
 )
 
-func NewAPI(conf config.App, traced log.TracedLogger) (*App, error) {
+func NewApp(conf config.App, traced log.TracedLogger) (*App, error) {
 	traced.Infow(domain.RuntimeTraceID, "Initializing SQL DB")
 	sqlDB, err := sql.Open(conf.DB.SQL.Driver, conf.DB.SQL.DataSource)
 	if err != nil {
