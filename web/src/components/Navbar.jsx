@@ -4,7 +4,7 @@ import {Container, Navbar as NavbarB, Nav, Button} from "react-bootstrap";
 export default function Navbar({userInfo, onSignInClicked, onSignUpClicked, onSignOutClicked}) {
     return (
         <>
-            <NavbarB expand="lg" bg="dark" variant="dark">
+            <NavbarB expand="lg" bg="dark" variant="dark" className="mb-5">
                 <Container>
                     <Link to="/" className="navbar-brand">Clipboard share</Link>
                     <NavbarB.Collapse>

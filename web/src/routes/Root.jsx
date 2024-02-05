@@ -1,6 +1,6 @@
 import {useState} from "react";
 import {Alert, Modal} from "react-bootstrap";
-import {Navigate, Outlet} from "react-router-dom";
+import {Outlet} from "react-router-dom";
 import {apiBaseURL} from "../env.jsx";
 import {getUserInfo, setUserInfo} from "../storage.js";
 import Navbar from "../components/Navbar.jsx";

@@ -42,7 +42,7 @@ func (r *SessionRepository) GetByID(id uint64) (*dal.Session, error) {
 func (r *SessionRepository) GetAllByUserID(userID uint64) ([]*dal.Session, error) {
 	res := make([]*dal.Session, 0, 10)
 
-	rows, err := r.db.Query("SELECT session_id, user_id, created_at, updated_at FROM sessions WHERE user_id = $1", userID)
+	rows, err := r.db.Query("SELECT session_id, user_id, name, created_at, updated_at FROM sessions WHERE user_id = $1", userID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -58,6 +58,7 @@ func (r *SessionRepository) GetAllByUserID(userID uint64) ([]*dal.Session, error
 		if err = rows.Scan(
 			&s.SessionID,
 			&s.UserID,
+			&s.Name,
 			&s.CreatedAt,
 			&s.UpdatedAt,
 		); err != nil {

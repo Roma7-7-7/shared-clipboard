@@ -8,7 +8,7 @@ export default function Home() {
     const onSignUpClicked = context.onSignUpClicked
 
     return (
-        <Container className="mt-5">
+        <Container>
             {userInfo === null && (
                 <Row>
                     <p className="fs-5">The purpose of this service is to share clipboard content across multiple hosts.</p>
