@@ -4,11 +4,14 @@ import {createBrowserRouter, RouterProvider} from "react-router-dom";
 import Root from "./routes/Root.jsx";
 import Home from "./routes/Home.jsx";
 import Sessions from "./routes/Sessions.jsx";
+import Session from "./routes/Session.jsx";
 
 export const router = createBrowserRouter([
-    {path: '/', element: <Root />, children: [
-        {path: '/', element: <Home />},
-        {path: '/sessions', element: <Sessions />},
+    {name: 'root', path: '/', element: <Root />, children: [
+        {name: 'home', path: '/', element: <Home />},
+        {name: 'sessions', path: 'sessions', element: <Sessions />},
+        {name: 'sessions/new', path: 'sessions/new', element: <Session action="new" />},
+        {name: 'sessions/edit', path: 'sessions/:sessionId/edit', element: <Session action="edit" />},
     ]},
 ])
 

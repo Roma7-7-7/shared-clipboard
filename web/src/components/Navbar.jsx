@@ -8,7 +8,11 @@ export default function Navbar({userInfo, onSignInClicked, onSignUpClicked, onSi
                 <Container>
                     <Link to="/" className="navbar-brand">Clipboard share</Link>
                     <NavbarB.Collapse>
-                        <Nav className="me-auto"></Nav>
+                        <Nav className="me-auto">
+                        {userInfo !== null && (
+                            <Link to="/sessions" className="nav-link">Sessions</Link>
+                        )}
+                        </Nav>
                         {userInfo === null && (
                             <Nav>
                                 <Button variant="outline-primary me-2" onClick={onSignInClicked}>Sign In</Button>

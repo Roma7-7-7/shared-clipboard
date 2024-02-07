@@ -227,7 +227,11 @@ export default function AuthModal({title, onHide, onSignedIn}) {
                 <Modal.Title>{title}</Modal.Title>
             </Modal.Header>
             <Modal.Body>
-                <Form onSubmit={handleSubmit}>
+                <Form onKeyUp={(event) => {
+                    if (event.key === "Enter") {
+                        handleSubmit(event);
+                    }
+                }} onSubmit={handleSubmit}>
                     <Form.Group as={Row} className="mb-3">
                         <InputGroup hasValidation={isSignUp}>
                             <Form.Label column sm="3">User name</Form.Label>

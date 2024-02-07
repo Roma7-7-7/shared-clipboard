@@ -1,6 +1,8 @@
 import {useEffect, useState} from "react";
 import {Col, Container, Row, Table} from "react-bootstrap";
 import {apiBaseURL} from "../env.jsx";
+import {Link} from "react-router-dom";
+import {Pen, Trash} from "react-bootstrap-icons";
 
 export default function Sessions() {
     const [items, setItems] = useState([])
@@ -18,7 +20,7 @@ export default function Sessions() {
                 return Promise.reject(response.status);
             })
             .then(data => {
-                setItems(data.map((session) => <SessionItem name={session["name"]} updatedAt={session["updated_at"]}/>));
+                setItems(data.map((session) => <SessionItem key={session["session_id"]} session={session} />));
             })
             .catch(error => {
                 console.error('Error:', error)
@@ -34,13 +36,15 @@ export default function Sessions() {
                 </Col>
             </Row>
             <Row>
-                <Col></Col>
-                <Col xs={5}>
+                <Col />
+                <Col xs="5">
                     <Table striped bordered hover>
                         <thead>
                             <tr>
                                 <th>Name</th>
-                                <th>Updated At</th>
+                                <th>Last used at</th>
+                                <th className="text-center">Edit</th>
+                                <th className="text-center">Delete</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -48,21 +52,36 @@ export default function Sessions() {
                         </tbody>
                     </Table>
                 </Col>
-                <Col></Col>
+                <Col />
+            </Row>
+            <Row>
+                <Col className="text-center">
+                    <Link to="new" className="btn btn-primary">New Session</Link>
+                </Col>
             </Row>
         </Container>
     )
 }
 
-function SessionItem({name, updatedAt}) {
+function SessionItem({session}) {
     return (
         <tr>
-            <td>{name}</td>
-            <td width="200px">{formatUpdatedAt(updatedAt)}</td>
+            <td>{session['name']}</td>
+            <td width="200px">{formatLastUsedAt(session['updated_at'])}</td>
+            <td className="text-center">
+                <Link to={`${session['session_id']}/edit`} className="btn btn-link">
+                    <Pen />
+                </Link>
+            </td>
+            <td className="text-center">
+                <a href="#" className="btn btn-link">
+                    <Trash />
+                </a>
+            </td>
         </tr>
     )
 }
 
-function formatUpdatedAt(updatedAt) {
+function formatLastUsedAt(updatedAt) {
     return new Date(updatedAt).toLocaleString()
 }

@@ -22,10 +22,11 @@ func NewSessionRepository(db *sql.DB) (*SessionRepository, error) {
 func (r *SessionRepository) GetByID(id uint64) (*dal.Session, error) {
 	var res dal.Session
 
-	if err := r.db.QueryRow("SELECT session_id, user_id, created_at, updated_at FROM sessions WHERE session_id = $1", id).
+	if err := r.db.QueryRow("SELECT session_id, user_id, name, created_at, updated_at FROM sessions WHERE session_id = $1", id).
 		Scan(
 			&res.SessionID,
 			&res.UserID,
+			&res.Name,
 			&res.CreatedAt,
 			&res.UpdatedAt,
 		); err != nil {
@@ -80,7 +81,7 @@ func (r *SessionRepository) Create(name string, userID uint64) (*dal.Session, er
 		UpdatedAt: now,
 	}
 
-	if err := r.db.QueryRow("INSERT INTO sessions (name, user_id, created_at, updated_at) VALUES ($1, $2, $3) RETURNING session_id",
+	if err := r.db.QueryRow("INSERT INTO sessions (name, user_id, created_at, updated_at) VALUES ($1, $2, $3, $4) RETURNING session_id",
 		name,
 		userID,
 		now,
