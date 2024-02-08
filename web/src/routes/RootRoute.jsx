@@ -6,7 +6,7 @@ import {getUserInfo, setUserInfo} from "../storage.js";
 import Navbar from "../components/Navbar.jsx";
 import AuthModal from "../components/AuthModal.jsx";
 
-export default function Root() {
+export default function RootRoute() {
     const [authModalTitle, setAuthModalTitle] = useState(null)
     const [alertMsg, setAlertMsg] = useState(null)
 

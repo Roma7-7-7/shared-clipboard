@@ -67,13 +67,15 @@ func NewApp(conf config.App, traced log.TracedLogger) (*App, error) {
 	jwtProcessor := jwt.NewProcessor(conf.JWT)
 	cookieProcessor := cookie.NewProcessor(jwtProcessor, conf.Cookie)
 
+	sessionService := domain.NewSessionService(sessionRepo, traced)
+
 	traced.Infow(domain.RuntimeTraceID, "Creating router")
 	h, err := handle.NewRouter(handle.Dependencies{
 		Config:              conf,
 		CookieProcessor:     cookieProcessor,
 		UserService:         userService,
 		JWTRepository:       jwtRepo,
-		SessionRepository:   sessionRepo,
+		SessionService:      sessionService,
 		ClipboardRepository: clipboardRepo,
 	}, traced)
 	if err != nil {
