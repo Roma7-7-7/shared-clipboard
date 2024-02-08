@@ -1,6 +1,6 @@
 import {useState} from "react";
-import {apiBaseURL} from "./env.jsx";
 import {Alert, Button, Col, Form, InputGroup, Modal, Row} from "react-bootstrap";
+import {apiBaseURL} from "../env.jsx";
 
 const signInTitle = "Sign In";
 const defaultPasswordFeedback = "Password must be at least 8 chara¡cters long and contain at least one upper case letter, at least one lower case, one number and one special character";
@@ -63,7 +63,7 @@ export default function AuthModal({title, onHide, onSignedIn}) {
                     })
                     .then(data => {
                         if (!data["error"]) {
-                            onSignedIn();
+                            onSignedIn(data);
                             return;
                         }
 
@@ -168,7 +168,7 @@ export default function AuthModal({title, onHide, onSignedIn}) {
                     })
                     .then(data => {
                         if (!data["error"]) {
-                            onSignedIn();
+                            onSignedIn(data);
                             return;
                         }
 
@@ -212,9 +212,9 @@ export default function AuthModal({title, onHide, onSignedIn}) {
         }
 
         setAlertMsg("");
-        context[title]["doSubmit"](event, () => {
+        context[title]["doSubmit"](event, (data) => {
             cleanup();
-            onSignedIn();
+            onSignedIn(data);
         });
     };
 
@@ -227,7 +227,11 @@ export default function AuthModal({title, onHide, onSignedIn}) {
                 <Modal.Title>{title}</Modal.Title>
             </Modal.Header>
             <Modal.Body>
-                <Form onSubmit={handleSubmit}>
+                <Form onKeyUp={(event) => {
+                    if (event.key === "Enter") {
+                        handleSubmit(event);
+                    }
+                }} onSubmit={handleSubmit}>
                     <Form.Group as={Row} className="mb-3">
                         <InputGroup hasValidation={isSignUp}>
                             <Form.Label column sm="3">User name</Form.Label>

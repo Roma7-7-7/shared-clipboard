@@ -13,7 +13,7 @@ type (
 	}
 
 	Session struct {
-		SessionID uint64
+		ID        uint64
 		Name      string
 		UserID    uint64
 		CreatedAt time.Time

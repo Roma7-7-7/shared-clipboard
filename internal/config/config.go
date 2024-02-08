@@ -50,17 +50,17 @@ type (
 
 	DB struct {
 		Bolt Bolt `json:"bolt"`
-		SQL  SQL  `json:"postgre"`
+		SQL  SQL  `json:"sql"`
 	}
 )
 
-func NewAPI(confPath string) (App, error) {
-	var api App
-	if err := readConfig(confPath, &api); err != nil {
-		return api, fmt.Errorf("read config: %w", err)
+func NewApp(confPath string) (App, error) {
+	var app App
+	if err := readConfig(confPath, &app); err != nil {
+		return app, fmt.Errorf("read config: %w", err)
 	}
 
-	return api, validateAPI(api)
+	return app, validateApp(app)
 }
 
 func readConfig(path string, target any) error {
@@ -83,23 +83,23 @@ func readConfig(path string, target any) error {
 	return nil
 }
 
-func validateAPI(api App) error {
+func validateApp(app App) error {
 	res := make([]string, 0, 10)
-	if api.Port <= 0 || api.Port > 65535 {
-		return fmt.Errorf("invalid port: %d", api.Port)
+	if app.Port <= 0 || app.Port > 65535 {
+		return fmt.Errorf("invalid port: %d", app.Port)
 	}
-	if api.DB.Bolt.Path == "" {
+	if app.DB.Bolt.Path == "" {
 		res = append(res, "empty data path")
 	}
-	if api.DB.SQL.Driver == "" {
+	if app.DB.SQL.Driver == "" {
 		res = append(res, "empty postgre driver")
 	}
-	if api.DB.SQL.DataSource == "" {
+	if app.DB.SQL.DataSource == "" {
 		res = append(res, "empty postgre data source")
 	}
 
 	if len(res) != 0 {
-		return fmt.Errorf("invalid api config: [%s]", strings.Join(res, "; "))
+		return fmt.Errorf("invalid app config: [%s]", strings.Join(res, "; "))
 	}
 
 	return nil

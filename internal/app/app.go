@@ -29,7 +29,7 @@ type (
 	}
 )
 
-func NewAPI(conf config.App, traced log.TracedLogger) (*App, error) {
+func NewApp(conf config.App, traced log.TracedLogger) (*App, error) {
 	traced.Infow(domain.RuntimeTraceID, "Initializing SQL DB")
 	sqlDB, err := sql.Open(conf.DB.SQL.Driver, conf.DB.SQL.DataSource)
 	if err != nil {
@@ -67,13 +67,15 @@ func NewAPI(conf config.App, traced log.TracedLogger) (*App, error) {
 	jwtProcessor := jwt.NewProcessor(conf.JWT)
 	cookieProcessor := cookie.NewProcessor(jwtProcessor, conf.Cookie)
 
+	sessionService := domain.NewSessionService(sessionRepo, traced)
+
 	traced.Infow(domain.RuntimeTraceID, "Creating router")
 	h, err := handle.NewRouter(handle.Dependencies{
 		Config:              conf,
 		CookieProcessor:     cookieProcessor,
 		UserService:         userService,
 		JWTRepository:       jwtRepo,
-		SessionRepository:   sessionRepo,
+		SessionService:      sessionService,
 		ClipboardRepository: clipboardRepo,
 	}, traced)
 	if err != nil {
