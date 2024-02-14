@@ -1,6 +1,7 @@
 package handle
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -17,6 +18,7 @@ import (
 )
 
 type AuthorizedMiddleware struct {
+	resp            *responder
 	cookieProcessor CookieProcessor
 	jwtRepository   JWTRepository
 	log             log.TracedLogger
@@ -56,9 +58,10 @@ func Logger(l log.TracedLogger) func(next http.Handler) http.Handler {
 }
 
 func NewAuthorizedMiddleware(
-	cookieProcessor CookieProcessor, jwtRepository JWTRepository, log log.TracedLogger,
+	cookieProcessor CookieProcessor, jwtRepository JWTRepository, resp *responder, log log.TracedLogger,
 ) *AuthorizedMiddleware {
 	return &AuthorizedMiddleware{
+		resp:            resp,
 		cookieProcessor: cookieProcessor,
 		jwtRepository:   jwtRepository,
 		log:             log,
@@ -68,42 +71,41 @@ func NewAuthorizedMiddleware(
 func (m *AuthorizedMiddleware) Handle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		var (
-			ctx       = r.Context()
-			tid       = domain.TraceIDFromContext(ctx)
-			token     *jwt.Token
-			claims    jwt.MapClaims
-			ok        bool
-			authority *domain.Authority
-			err       error
+			ctx   = r.Context()
+			tid   = domain.TraceIDFromContext(ctx)
+			token *jwt.Token
+			err   error
 		)
 		m.log.Debugw(tid, "authorized middleware")
 
 		if token, err = m.cookieProcessor.AccessTokenFromRequest(r); err != nil {
 			if errors.Is(err, cookie.ErrAccessTokenNotFound) {
 				m.log.Debugw(tid, "access token cookie not found")
-				sendUnauthorized(ctx, rw, m.log)
+				m.resp.SendError(ctx, rw, http.StatusUnauthorized, domain.ErrorCodeUnauthorized.Value, "Request is not authorized", nil)
 				return
 			}
 			if errors.Is(err, cookie.ErrParseAccessToken) {
 				m.log.Debugw(tid, "failed to parse access token cookie")
-				sendForbidden(ctx, rw, "JWT token is not valid or expired", m.log)
+				m.sendForbidden(ctx, rw, "JWT token is not valid or expired")
 				return
 			}
 
 			m.log.Errorw(tid, "failed to get access token cookie from request", err)
-			sendInternalServerError(ctx, rw, m.log)
+			m.resp.SendInternalServerError(ctx, rw)
 			return
 		}
 
-		if claims, ok = token.Claims.(jwt.MapClaims); !ok || !token.Valid {
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok || !token.Valid {
 			m.log.Debugw(tid, "failed to parse access token cookie")
-			sendForbidden(ctx, rw, "JWT token is not valid or expired", m.log)
+			m.sendForbidden(ctx, rw, "JWT token is not valid or expired")
 			return
 		}
 
-		if authority, err = toAuthority(claims); err != nil {
+		authority, err := toAuthority(claims)
+		if err != nil {
 			m.log.Errorw(tid, "failed to parse authority", err)
-			sendInternalServerError(ctx, rw, m.log)
+			m.resp.SendInternalServerError(ctx, rw)
 			return
 		}
 
@@ -112,18 +114,22 @@ func (m *AuthorizedMiddleware) Handle(next http.Handler) http.Handler {
 			ok, err = m.jwtRepository.IsBlockedJTIExists(jti)
 			if err != nil {
 				m.log.Errorw(tid, "failed to check blocked jti", err)
-				sendInternalServerError(ctx, rw, m.log)
+				m.resp.SendInternalServerError(ctx, rw)
 				return
 			}
 			if ok {
 				m.log.Debugw(tid, "blocked jti")
-				sendForbidden(ctx, rw, "JWT token is not valid or expired", m.log)
+				m.sendForbidden(ctx, rw, "JWT token is not valid or expired")
 				return
 			}
 		}
 
 		next.ServeHTTP(rw, r.WithContext(domain.ContextWithAuthority(ctx, authority)))
 	})
+}
+
+func (m *AuthorizedMiddleware) sendForbidden(ctx context.Context, rw http.ResponseWriter, message string) {
+	m.resp.SendError(ctx, rw, http.StatusForbidden, domain.ErrorCodeForbidden.Value, message, nil)
 }
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")

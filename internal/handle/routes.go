@@ -45,16 +45,29 @@ func NewRouter(deps Dependencies, log log.TracedLogger) (*chi.Mux, error) {
 		AllowCredentials: conf.CORS.AllowCredentials,
 	}))
 
-	r.Route("/", NewAuthHandler(deps.UserService, deps.CookieProcessor, deps.JWTRepository, log).RegisterRoutes)
+	resp := &responder{log: log}
 
-	r.With(NewAuthorizedMiddleware(deps.CookieProcessor, deps.JWTRepository, log).Handle).
-		Route("/v1", func(r chi.Router) {
-			r.Route("/sessions", NewSessionHandler(deps.SessionService, deps.ClipboardRepository, log).RegisterRoutes)
-			r.Route("/user", NewUserHandler(log).RegisterRoutes)
-		})
+	authHandler := NewAuthHandler(deps.UserService, deps.CookieProcessor, deps.JWTRepository, resp, log)
+	r.Post("/signup", authHandler.SignUp)
+	r.Post("/signin", authHandler.SignIn)
+	r.Post("/signout", authHandler.SignOut)
 
-	r.NotFound(handleNotFound(log))
-	r.MethodNotAllowed(handleMethodNotAllowed(log))
+	authorizedRouter := r.With(NewAuthorizedMiddleware(deps.CookieProcessor, deps.JWTRepository, resp, log).Handle)
+
+	sessionHandler := NewSessionHandler(deps.SessionService, deps.ClipboardRepository, resp, log)
+	authorizedRouter.Post("/v1/sessions", sessionHandler.Create)
+	authorizedRouter.Get("/v1/sessions", sessionHandler.GetAllByUserID)
+	authorizedRouter.Get("/v1/sessions/{sessionID}", sessionHandler.GetByID)
+	authorizedRouter.Put("/v1/sessions/{sessionID}", sessionHandler.Update)
+	authorizedRouter.Delete("/v1/sessions/{sessionID}", sessionHandler.Delete)
+	authorizedRouter.Get("/v1/sessions/{sessionID}/clipboard", sessionHandler.GetClipboard)
+	authorizedRouter.Put("/v1/sessions/{sessionID}/clipboard", sessionHandler.SetClipboard)
+
+	userHandler := NewUserHandler(resp, log)
+	authorizedRouter.Get("/v1/user/info", userHandler.GetUserInfo)
+
+	r.NotFound(handleNotFound(resp))
+	r.MethodNotAllowed(handleMethodNotAllowed(resp))
 
 	printRoutes(r, log)
 
@@ -62,15 +75,15 @@ func NewRouter(deps Dependencies, log log.TracedLogger) (*chi.Mux, error) {
 	return r, nil
 }
 
-func handleNotFound(log log.TracedLogger) func(rw http.ResponseWriter, r *http.Request) {
+func handleNotFound(resp *responder) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		sendNotFound(r.Context(), rw, "Not Found", log)
+		resp.SendNotFound(r.Context(), rw, "Not Found")
 	}
 }
 
-func handleMethodNotAllowed(log log.TracedLogger) func(rw http.ResponseWriter, r *http.Request) {
+func handleMethodNotAllowed(resp *responder) func(rw http.ResponseWriter, r *http.Request) {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		sendErrorMethodNotAllowed(r.Context(), r.Method, rw, log)
+		resp.SendError(r.Context(), rw, http.StatusMethodNotAllowed, domain.ErrorCodeMethodNotAllowed.Value, "Method Not Allowed", nil)
 	}
 }
 

@@ -47,7 +47,7 @@ func NewSessionService(sessionRepo SessionRepository, log log.TracedLogger) *Ses
 	}
 }
 
-func (s *SessionService) GetByID(ctx context.Context, id uint64) (*Session, error) {
+func (s *SessionService) GetByID(ctx context.Context, userID, id uint64) (*Session, error) {
 	tid := TraceIDFromContext(ctx)
 	s.log.Debugw(tid, "get session by id", "sessionID", id)
 
@@ -59,6 +59,9 @@ func (s *SessionService) GetByID(ctx context.Context, id uint64) (*Session, erro
 		}
 
 		return nil, fmt.Errorf("get session by id=%d: %w", id, err)
+	}
+	if session.UserID != userID {
+		return nil, ErrSessionPermissionDenied
 	}
 
 	s.log.Debugw(tid, "session found", "session", session)
@@ -82,7 +85,7 @@ func (s *SessionService) GetByUserID(ctx context.Context, userID uint64) ([]*Ses
 	return res, nil
 }
 
-func (s *SessionService) Create(ctx context.Context, name string, userID uint64) (*Session, error) {
+func (s *SessionService) Create(ctx context.Context, userID uint64, name string) (*Session, error) {
 	tid := TraceIDFromContext(ctx)
 	s.log.Debugw(tid, "create session", "name", name, "userID", userID)
 
@@ -99,7 +102,7 @@ func (s *SessionService) Create(ctx context.Context, name string, userID uint64)
 	return toSession(session), nil
 }
 
-func (s *SessionService) Update(ctx context.Context, sessionID, userID uint64, name string) (*Session, error) {
+func (s *SessionService) Update(ctx context.Context, userID, sessionID uint64, name string) (*Session, error) {
 	tid := TraceIDFromContext(ctx)
 	s.log.Debugw(tid, "update session", "sessionID", sessionID, "name", name)
 
@@ -117,7 +120,7 @@ func (s *SessionService) Update(ctx context.Context, sessionID, userID uint64, n
 	}
 
 	if session.UserID != userID {
-		return nil, fmt.Errorf("user with ID %q is not allowed to modify session with ID %q: %w", userID, sessionID, ErrSessionPermissionDenied)
+		return nil, ErrSessionPermissionDenied
 	}
 
 	updated, err := s.sessionRepo.Update(sessionID, name)
@@ -129,7 +132,7 @@ func (s *SessionService) Update(ctx context.Context, sessionID, userID uint64, n
 	return toSession(updated), nil
 }
 
-func (s *SessionService) Delete(ctx context.Context, sessionID, userID uint64) error {
+func (s *SessionService) Delete(ctx context.Context, userID, sessionID uint64) error {
 	tid := TraceIDFromContext(ctx)
 	s.log.Debugw(tid, "delete session", "sessionID", sessionID)
 
@@ -143,7 +146,7 @@ func (s *SessionService) Delete(ctx context.Context, sessionID, userID uint64) e
 	}
 
 	if session.UserID != userID {
-		return fmt.Errorf("user with ID %d is not allowed to delete session with ID %d: %w", userID, sessionID, ErrSessionPermissionDenied)
+		return ErrSessionPermissionDenied
 	}
 
 	if err = s.sessionRepo.Delete(sessionID); err != nil {
