@@ -7,14 +7,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/Roma7-7-7/shared-clipboard/internal/dal"
 	"github.com/Roma7-7-7/shared-clipboard/internal/domain"
 	"github.com/Roma7-7-7/shared-clipboard/internal/handle/cookie"
-	"github.com/Roma7-7-7/shared-clipboard/tools/log"
-	"github.com/Roma7-7-7/shared-clipboard/tools/rest"
+	"github.com/Roma7-7-7/shared-clipboard/internal/log"
 )
 
 type (
@@ -42,6 +40,8 @@ type (
 	}
 
 	AuthHandler struct {
+		resp *responder
+
 		userService     UserService
 		cookieProcessor CookieProcessor
 		jwtRepository   JWTRepository
@@ -56,9 +56,11 @@ type (
 )
 
 func NewAuthHandler(
-	userService UserService, cookieProcessor CookieProcessor, jwtRepository JWTRepository, log log.TracedLogger,
+	userService UserService, cookieProcessor CookieProcessor, jwtRepository JWTRepository, resp *responder, log log.TracedLogger,
 ) *AuthHandler {
 	return &AuthHandler{
+		resp: resp,
+
 		userService:     userService,
 		cookieProcessor: cookieProcessor,
 		jwtRepository:   jwtRepository,
@@ -67,137 +69,112 @@ func NewAuthHandler(
 	}
 }
 
-func (h *AuthHandler) RegisterRoutes(r chi.Router) {
-	r.Post("/signup", h.SignUp)
-	r.Post("/signin", h.SignIn)
-	r.Post("/signout", h.SignOut)
-}
-
 func (h *AuthHandler) SignUp(rw http.ResponseWriter, r *http.Request) {
 	var (
-		ctx        = r.Context()
-		tid        = domain.TraceIDFromContext(ctx)
-		req        namePasswordRequest
-		user       *dal.User
-		userCookie *http.Cookie
-		marshaled  []byte
-		err        error
+		ctx = r.Context()
+		req namePasswordRequest
+		err error
 	)
 
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.log.Debugw(tid, "failed to decode request", err)
-		sendBadRequest(ctx, rw, "failed to parse request", h.log)
+		h.log.Debugw(ctx, "failed to decode request", err)
+		h.resp.SendBadRequest(ctx, rw, "failed to parse request")
 		return
 	}
 
-	if user, err = h.userService.Create(ctx, req.Name, req.Password); err != nil {
+	user, err := h.userService.Create(ctx, req.Name, req.Password)
+	if err != nil {
 		var re *domain.RenderableError
 		if errors.As(err, &re) {
-			h.log.Debugw(tid, "failed to create user", err)
-			sendRenderableError(ctx, re, rw, h.log)
+			h.log.Infow(ctx, "failed to create user", err)
+			h.resp.SendError(ctx, rw, http.StatusConflict, re.Code.Value, re.Message, re.Details)
 			return
 		}
 
-		h.log.Errorw(tid, "failed to create user", err)
-		sendInternalServerError(ctx, rw, h.log)
+		h.log.Errorw(ctx, "failed to create user", err)
+		h.resp.SendInternalServerError(ctx, rw)
 		return
 	}
 
-	if userCookie, err = h.cookieProcessor.ToAccessToken(user.ID, user.Name); err != nil {
-		h.log.Errorw(tid, "failed to create cookie", err)
-		sendInternalServerError(ctx, rw, h.log)
+	userCookie, err := h.cookieProcessor.ToAccessToken(user.ID, user.Name)
+	if err != nil {
+		h.log.Errorw(ctx, "failed to create cookie", err)
+		h.resp.SendInternalServerError(ctx, rw)
 		return
 	}
 	http.SetCookie(rw, userCookie)
 
-	if marshaled, err = json.Marshal(userToDTO(user)); err != nil {
-		h.log.Errorw(tid, "failed to marshal response", err)
-		sendErrorMarshalBody(ctx, rw, h.log)
-		return
-	}
-
-	rest.Send(ctx, rw, http.StatusCreated, rest.ContentTypeJSON, marshaled, h.log)
+	h.resp.Send(ctx, rw, http.StatusCreated, nil, userToDTO(user))
 }
 
 func (h *AuthHandler) SignIn(rw http.ResponseWriter, r *http.Request) {
 	var (
-		ctx        = r.Context()
-		tid        = domain.TraceIDFromContext(ctx)
-		req        namePasswordRequest
-		user       *dal.User
-		userCookie *http.Cookie
-		marshaled  []byte
-		err        error
+		ctx = r.Context()
+		req namePasswordRequest
+		err error
 	)
 
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.log.Debugw(tid, "failed to decode request", err)
-		sendBadRequest(ctx, rw, "failed to parse request", h.log)
+		h.log.Debugw(ctx, "failed to decode request", err)
+		h.resp.SendBadRequest(ctx, rw, "failed to parse request")
 		return
 	}
 
-	if user, err = h.userService.VerifyPassword(ctx, req.Name, req.Password); err != nil {
+	user, err := h.userService.VerifyPassword(ctx, req.Name, req.Password)
+	if err != nil {
 		var re *domain.RenderableError
 		if errors.As(err, &re) {
-			h.log.Debugw(tid, "failed to verify password", err)
-			sendRenderableError(ctx, re, rw, h.log)
+			h.log.Debugw(ctx, "failed to verify password", err)
+			h.resp.SendError(ctx, rw, http.StatusUnauthorized, re.Code.Value, re.Message, re.Details)
 			return
 		}
 
-		h.log.Errorw(tid, "failed to verify password", err)
-		sendInternalServerError(ctx, rw, h.log)
+		h.log.Errorw(ctx, "failed to verify password", err)
+		h.resp.SendInternalServerError(ctx, rw)
 		return
 	}
 
-	if userCookie, err = h.cookieProcessor.ToAccessToken(user.ID, user.Name); err != nil {
-		h.log.Errorw(tid, "failed to create cookie", err)
-		sendInternalServerError(ctx, rw, h.log)
+	userCookie, err := h.cookieProcessor.ToAccessToken(user.ID, user.Name)
+	if err != nil {
+		h.log.Errorw(ctx, "failed to create cookie", err)
+		h.resp.SendInternalServerError(ctx, rw)
 		return
 	}
 	http.SetCookie(rw, userCookie)
 
-	if marshaled, err = json.Marshal(userToDTO(user)); err != nil {
-		h.log.Errorw(tid, "failed to marshal response", err)
-		sendErrorMarshalBody(ctx, rw, h.log)
-		return
-	}
-
-	rest.Send(ctx, rw, http.StatusOK, rest.ContentTypeJSON, marshaled, h.log)
+	h.resp.Send(ctx, rw, http.StatusOK, nil, userToDTO(user))
 }
 
 func (h *AuthHandler) SignOut(rw http.ResponseWriter, r *http.Request) {
 	var (
-		ctx    = r.Context()
-		tid    = domain.TraceIDFromContext(ctx)
-		token  *jwt.Token
-		claims jwt.MapClaims
-		ok     bool
-		err    error
+		ctx = r.Context()
 	)
-	h.log.Debugw(tid, "signing out")
+	h.log.Debugw(ctx, "signing out")
 
-	if token, err = h.cookieProcessor.AccessTokenFromRequest(r); err != nil {
+	token, err := h.cookieProcessor.AccessTokenFromRequest(r)
+	if err != nil {
 		if errors.Is(err, cookie.ErrAccessTokenNotFound) {
-			h.log.Debugw(tid, "access token cookie not found")
-			rest.SendNoContent(ctx, rw, h.log)
+			h.log.Debugw(ctx, "access token cookie not found")
+			rw.WriteHeader(http.StatusNoContent)
 			return
 		}
 		if errors.Is(err, cookie.ErrParseAccessToken) {
-			h.log.Debugw(tid, "failed to parse access token cookie")
+			h.log.Debugw(ctx, "failed to parse access token cookie")
 			http.SetCookie(rw, h.cookieProcessor.ExpireAccessToken())
-			rest.SendNoContent(ctx, rw, h.log)
+			rw.WriteHeader(http.StatusNoContent)
 			return
 		}
 
-		h.log.Errorw(tid, "failed to get access token cookie from request", err)
-		sendInternalServerError(ctx, rw, h.log)
+		h.log.Errorw(ctx, "failed to get access token cookie from request", err)
+		h.resp.SendInternalServerError(ctx, rw)
 		return
 	}
 
-	if claims, ok = token.Claims.(jwt.MapClaims); !ok || !token.Valid {
-		h.log.Debugw(tid, "failed to parse access token cookie")
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || !token.Valid {
+		h.log.Debugw(ctx, "failed to parse access token cookie")
 		http.SetCookie(rw, h.cookieProcessor.ExpireAccessToken())
-		rest.SendNoContent(ctx, rw, h.log)
+		rw.WriteHeader(http.StatusNoContent)
 		return
 	}
 
@@ -206,12 +183,12 @@ func (h *AuthHandler) SignOut(rw http.ResponseWriter, r *http.Request) {
 	if jti != "" && exp > 0 {
 		expAt := time.Unix(int64(exp), 0)
 		if err = h.jwtRepository.CreateBlockedJTI(jti, expAt); err != nil {
-			h.log.Errorw(tid, "failed to create blocked jti", err)
+			h.log.Errorw(ctx, "failed to create blocked jti", err)
 		}
 	}
 
 	http.SetCookie(rw, h.cookieProcessor.ExpireAccessToken())
-	rest.SendNoContent(ctx, rw, h.log)
+	rw.WriteHeader(http.StatusNoContent)
 }
 
 func userToDTO(user *dal.User) *User {

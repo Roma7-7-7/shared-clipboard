@@ -1,6 +1,7 @@
 package handle
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -11,12 +12,14 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/golang-jwt/jwt/v5"
 
+	ac "github.com/Roma7-7-7/shared-clipboard/internal/context"
 	"github.com/Roma7-7-7/shared-clipboard/internal/domain"
 	"github.com/Roma7-7-7/shared-clipboard/internal/handle/cookie"
-	"github.com/Roma7-7-7/shared-clipboard/tools/log"
+	"github.com/Roma7-7-7/shared-clipboard/internal/log"
 )
 
 type AuthorizedMiddleware struct {
+	resp            *responder
 	cookieProcessor CookieProcessor
 	jwtRepository   JWTRepository
 	log             log.TracedLogger
@@ -29,7 +32,7 @@ func TraceID(next http.Handler) http.Handler {
 			tid = randomAlphanumericTraceID()
 		}
 		w.Header().Set(middleware.RequestIDHeader, tid)
-		next.ServeHTTP(w, r.WithContext(domain.ContextWithTraceID(r.Context(), tid)))
+		next.ServeHTTP(w, r.WithContext(ac.WithTraceID(r.Context(), tid)))
 	})
 }
 
@@ -40,7 +43,7 @@ func Logger(l log.TracedLogger) func(next http.Handler) http.Handler {
 
 			started := time.Now()
 			defer func() {
-				l.Infow(domain.TraceIDFromContext(r.Context()), "request",
+				l.Infow(r.Context(), "request",
 					"method", r.Method,
 					"url", r.URL.String(),
 					"proto", r.Proto,
@@ -56,9 +59,10 @@ func Logger(l log.TracedLogger) func(next http.Handler) http.Handler {
 }
 
 func NewAuthorizedMiddleware(
-	cookieProcessor CookieProcessor, jwtRepository JWTRepository, log log.TracedLogger,
+	cookieProcessor CookieProcessor, jwtRepository JWTRepository, resp *responder, log log.TracedLogger,
 ) *AuthorizedMiddleware {
 	return &AuthorizedMiddleware{
+		resp:            resp,
 		cookieProcessor: cookieProcessor,
 		jwtRepository:   jwtRepository,
 		log:             log,
@@ -68,42 +72,40 @@ func NewAuthorizedMiddleware(
 func (m *AuthorizedMiddleware) Handle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		var (
-			ctx       = r.Context()
-			tid       = domain.TraceIDFromContext(ctx)
-			token     *jwt.Token
-			claims    jwt.MapClaims
-			ok        bool
-			authority *domain.Authority
-			err       error
+			ctx   = r.Context()
+			token *jwt.Token
+			err   error
 		)
-		m.log.Debugw(tid, "authorized middleware")
+		m.log.Debugw(ctx, "authorized middleware")
 
 		if token, err = m.cookieProcessor.AccessTokenFromRequest(r); err != nil {
 			if errors.Is(err, cookie.ErrAccessTokenNotFound) {
-				m.log.Debugw(tid, "access token cookie not found")
-				sendUnauthorized(ctx, rw, m.log)
+				m.log.Debugw(ctx, "access token cookie not found")
+				m.resp.SendError(ctx, rw, http.StatusUnauthorized, domain.ErrorCodeUnauthorized.Value, "Request is not authorized", nil)
 				return
 			}
 			if errors.Is(err, cookie.ErrParseAccessToken) {
-				m.log.Debugw(tid, "failed to parse access token cookie")
-				sendForbidden(ctx, rw, "JWT token is not valid or expired", m.log)
+				m.log.Debugw(ctx, "failed to parse access token cookie")
+				m.sendForbidden(ctx, rw, "JWT token is not valid or expired")
 				return
 			}
 
-			m.log.Errorw(tid, "failed to get access token cookie from request", err)
-			sendInternalServerError(ctx, rw, m.log)
+			m.log.Errorw(ctx, "failed to get access token cookie from request", err)
+			m.resp.SendInternalServerError(ctx, rw)
 			return
 		}
 
-		if claims, ok = token.Claims.(jwt.MapClaims); !ok || !token.Valid {
-			m.log.Debugw(tid, "failed to parse access token cookie")
-			sendForbidden(ctx, rw, "JWT token is not valid or expired", m.log)
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok || !token.Valid {
+			m.log.Debugw(ctx, "failed to parse access token cookie")
+			m.sendForbidden(ctx, rw, "JWT token is not valid or expired")
 			return
 		}
 
-		if authority, err = toAuthority(claims); err != nil {
-			m.log.Errorw(tid, "failed to parse authority", err)
-			sendInternalServerError(ctx, rw, m.log)
+		authority, err := toAuthority(claims)
+		if err != nil {
+			m.log.Errorw(ctx, "failed to parse authority", err)
+			m.resp.SendInternalServerError(ctx, rw)
 			return
 		}
 
@@ -111,19 +113,23 @@ func (m *AuthorizedMiddleware) Handle(next http.Handler) http.Handler {
 		if ok && jti != "" {
 			ok, err = m.jwtRepository.IsBlockedJTIExists(jti)
 			if err != nil {
-				m.log.Errorw(tid, "failed to check blocked jti", err)
-				sendInternalServerError(ctx, rw, m.log)
+				m.log.Errorw(ctx, "failed to check blocked jti", err)
+				m.resp.SendInternalServerError(ctx, rw)
 				return
 			}
 			if ok {
-				m.log.Debugw(tid, "blocked jti")
-				sendForbidden(ctx, rw, "JWT token is not valid or expired", m.log)
+				m.log.Debugw(ctx, "blocked jti")
+				m.sendForbidden(ctx, rw, "JWT token is not valid or expired")
 				return
 			}
 		}
 
-		next.ServeHTTP(rw, r.WithContext(domain.ContextWithAuthority(ctx, authority)))
+		next.ServeHTTP(rw, r.WithContext(ac.WithAuthority(ctx, authority)))
 	})
+}
+
+func (m *AuthorizedMiddleware) sendForbidden(ctx context.Context, rw http.ResponseWriter, message string) {
+	m.resp.SendError(ctx, rw, http.StatusForbidden, domain.ErrorCodeForbidden.Value, message, nil)
 }
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -136,7 +142,7 @@ func randomAlphanumericTraceID() string {
 	return string(b)
 }
 
-func toAuthority(claims jwt.MapClaims) (*domain.Authority, error) {
+func toAuthority(claims jwt.MapClaims) (*ac.Authority, error) {
 	var (
 		ids  string
 		id   uint64
@@ -154,7 +160,7 @@ func toAuthority(claims jwt.MapClaims) (*domain.Authority, error) {
 		return nil, errors.New("name is not a string")
 	}
 
-	return &domain.Authority{
+	return &ac.Authority{
 		UserID:   id,
 		UserName: name,
 	}, nil
