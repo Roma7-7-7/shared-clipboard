@@ -12,7 +12,7 @@ import (
 	"github.com/Roma7-7-7/shared-clipboard/internal/dal"
 	"github.com/Roma7-7-7/shared-clipboard/internal/domain"
 	"github.com/Roma7-7-7/shared-clipboard/internal/handle/cookie"
-	"github.com/Roma7-7-7/shared-clipboard/tools/log"
+	"github.com/Roma7-7-7/shared-clipboard/internal/log"
 )
 
 type (
@@ -72,13 +72,12 @@ func NewAuthHandler(
 func (h *AuthHandler) SignUp(rw http.ResponseWriter, r *http.Request) {
 	var (
 		ctx = r.Context()
-		tid = domain.TraceIDFromContext(ctx)
 		req namePasswordRequest
 		err error
 	)
 
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.log.Debugw(tid, "failed to decode request", err)
+		h.log.Debugw(ctx, "failed to decode request", err)
 		h.resp.SendBadRequest(ctx, rw, "failed to parse request")
 		return
 	}
@@ -87,19 +86,19 @@ func (h *AuthHandler) SignUp(rw http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		var re *domain.RenderableError
 		if errors.As(err, &re) {
-			h.log.Infow(tid, "failed to create user", err)
+			h.log.Infow(ctx, "failed to create user", err)
 			h.resp.SendError(ctx, rw, http.StatusConflict, re.Code.Value, re.Message, re.Details)
 			return
 		}
 
-		h.log.Errorw(tid, "failed to create user", err)
+		h.log.Errorw(ctx, "failed to create user", err)
 		h.resp.SendInternalServerError(ctx, rw)
 		return
 	}
 
 	userCookie, err := h.cookieProcessor.ToAccessToken(user.ID, user.Name)
 	if err != nil {
-		h.log.Errorw(tid, "failed to create cookie", err)
+		h.log.Errorw(ctx, "failed to create cookie", err)
 		h.resp.SendInternalServerError(ctx, rw)
 		return
 	}
@@ -111,13 +110,12 @@ func (h *AuthHandler) SignUp(rw http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) SignIn(rw http.ResponseWriter, r *http.Request) {
 	var (
 		ctx = r.Context()
-		tid = domain.TraceIDFromContext(ctx)
 		req namePasswordRequest
 		err error
 	)
 
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.log.Debugw(tid, "failed to decode request", err)
+		h.log.Debugw(ctx, "failed to decode request", err)
 		h.resp.SendBadRequest(ctx, rw, "failed to parse request")
 		return
 	}
@@ -126,19 +124,19 @@ func (h *AuthHandler) SignIn(rw http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		var re *domain.RenderableError
 		if errors.As(err, &re) {
-			h.log.Debugw(tid, "failed to verify password", err)
+			h.log.Debugw(ctx, "failed to verify password", err)
 			h.resp.SendError(ctx, rw, http.StatusUnauthorized, re.Code.Value, re.Message, re.Details)
 			return
 		}
 
-		h.log.Errorw(tid, "failed to verify password", err)
+		h.log.Errorw(ctx, "failed to verify password", err)
 		h.resp.SendInternalServerError(ctx, rw)
 		return
 	}
 
 	userCookie, err := h.cookieProcessor.ToAccessToken(user.ID, user.Name)
 	if err != nil {
-		h.log.Errorw(tid, "failed to create cookie", err)
+		h.log.Errorw(ctx, "failed to create cookie", err)
 		h.resp.SendInternalServerError(ctx, rw)
 		return
 	}
@@ -149,34 +147,32 @@ func (h *AuthHandler) SignIn(rw http.ResponseWriter, r *http.Request) {
 
 func (h *AuthHandler) SignOut(rw http.ResponseWriter, r *http.Request) {
 	var (
-		ctx   = r.Context()
-		tid   = domain.TraceIDFromContext(ctx)
-		token *jwt.Token
-		err   error
+		ctx = r.Context()
 	)
-	h.log.Debugw(tid, "signing out")
+	h.log.Debugw(ctx, "signing out")
 
-	if token, err = h.cookieProcessor.AccessTokenFromRequest(r); err != nil {
+	token, err := h.cookieProcessor.AccessTokenFromRequest(r)
+	if err != nil {
 		if errors.Is(err, cookie.ErrAccessTokenNotFound) {
-			h.log.Debugw(tid, "access token cookie not found")
+			h.log.Debugw(ctx, "access token cookie not found")
 			rw.WriteHeader(http.StatusNoContent)
 			return
 		}
 		if errors.Is(err, cookie.ErrParseAccessToken) {
-			h.log.Debugw(tid, "failed to parse access token cookie")
+			h.log.Debugw(ctx, "failed to parse access token cookie")
 			http.SetCookie(rw, h.cookieProcessor.ExpireAccessToken())
 			rw.WriteHeader(http.StatusNoContent)
 			return
 		}
 
-		h.log.Errorw(tid, "failed to get access token cookie from request", err)
+		h.log.Errorw(ctx, "failed to get access token cookie from request", err)
 		h.resp.SendInternalServerError(ctx, rw)
 		return
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok || !token.Valid {
-		h.log.Debugw(tid, "failed to parse access token cookie")
+		h.log.Debugw(ctx, "failed to parse access token cookie")
 		http.SetCookie(rw, h.cookieProcessor.ExpireAccessToken())
 		rw.WriteHeader(http.StatusNoContent)
 		return
@@ -187,7 +183,7 @@ func (h *AuthHandler) SignOut(rw http.ResponseWriter, r *http.Request) {
 	if jti != "" && exp > 0 {
 		expAt := time.Unix(int64(exp), 0)
 		if err = h.jwtRepository.CreateBlockedJTI(jti, expAt); err != nil {
-			h.log.Errorw(tid, "failed to create blocked jti", err)
+			h.log.Errorw(ctx, "failed to create blocked jti", err)
 		}
 	}
 

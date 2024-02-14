@@ -8,8 +8,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/Roma7-7-7/shared-clipboard/internal/dal"
+	"github.com/Roma7-7-7/shared-clipboard/internal/log"
 	"github.com/Roma7-7-7/shared-clipboard/tools"
-	"github.com/Roma7-7-7/shared-clipboard/tools/log"
 )
 
 const (
@@ -36,10 +36,7 @@ func NewUserService(repo UserRepository, log log.TracedLogger) *UserService {
 }
 
 func (s *UserService) Create(ctx context.Context, name, password string) (*dal.User, error) {
-	var (
-		tid = TraceIDFromContext(ctx)
-	)
-	s.log.Debugw(tid, "creating user", "name", name)
+	s.log.Debugw(ctx, "creating user", "name", name)
 
 	if err := validateSignup(name, password); err != nil {
 		return nil, fmt.Errorf("validate signup: %w", err)
@@ -55,7 +52,7 @@ func (s *UserService) Create(ctx context.Context, name, password string) (*dal.U
 	user, err := s.repo.Create(name, string(hashed), passwordSalt)
 	if err != nil {
 		if errors.Is(err, dal.ErrConflictUnique) {
-			s.log.Debugw(tid, "user with this name already exists")
+			s.log.Debugw(ctx, "user with this name already exists")
 			return nil, &RenderableError{
 				Code:    ErrorCodeSignupConflict,
 				Message: "User with specified name already exists",
@@ -65,21 +62,17 @@ func (s *UserService) Create(ctx context.Context, name, password string) (*dal.U
 		return nil, fmt.Errorf("create user: %w", err)
 	}
 
-	s.log.Debugw(tid, "user created", "id", user.ID)
+	s.log.Debugw(ctx, "user created", "id", user.ID)
 	return user, nil
 }
 
 func (s *UserService) VerifyPassword(ctx context.Context, name, password string) (*dal.User, error) {
-	var (
-		tid  = TraceIDFromContext(ctx)
-		user *dal.User
-		err  error
-	)
-	s.log.Debugw(tid, "verifying password", "name", name)
+	s.log.Debugw(ctx, "verifying password", "name", name)
 
-	if user, err = s.repo.GetByName(name); err != nil {
+	user, err := s.repo.GetByName(name)
+	if err != nil {
 		if errors.Is(err, dal.ErrNotFound) {
-			s.log.Debugw(tid, "user not found")
+			s.log.Debugw(ctx, "user not found")
 			return nil, &RenderableError{
 				Code:    ErrorCodeUserNotFound,
 				Message: "User not found",
@@ -91,14 +84,14 @@ func (s *UserService) VerifyPassword(ctx context.Context, name, password string)
 
 	salted := saltedPassword(password, user.PasswordSalt)
 	if err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(salted)); err != nil {
-		s.log.Debugw(tid, "wrong password")
+		s.log.Debugw(ctx, "wrong password")
 		return nil, &RenderableError{
 			Code:    ErrorCodeSiginWrongPassword,
 			Message: "Wrong password",
 		}
 	}
 
-	s.log.Debugw(tid, "password verified", "id", user.ID)
+	s.log.Debugw(ctx, "password verified", "id", user.ID)
 	return user, nil
 }
 

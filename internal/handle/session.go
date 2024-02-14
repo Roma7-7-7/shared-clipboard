@@ -11,10 +11,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	ac "github.com/Roma7-7-7/shared-clipboard/internal/context"
 	"github.com/Roma7-7-7/shared-clipboard/internal/dal"
 	"github.com/Roma7-7-7/shared-clipboard/internal/domain"
-	"github.com/Roma7-7-7/shared-clipboard/tools/log"
-	"github.com/Roma7-7-7/shared-clipboard/tools/rest"
+	"github.com/Roma7-7-7/shared-clipboard/internal/log"
 )
 
 type (
@@ -62,27 +62,26 @@ func NewSessionHandler(sessionService SessionService, clipboardRepo ClipboardRep
 func (h *SessionHandler) GetByID(rw http.ResponseWriter, r *http.Request) {
 	var (
 		ctx       = r.Context()
-		tid       = domain.TraceIDFromContext(ctx)
 		sessionID = chi.URLParam(r, "sessionID")
 	)
-	h.log.Debugw(tid, "Get session by ID", "sessionID", sessionID)
+	h.log.Debugw(ctx, "Get session by ID", "sessionID", sessionID)
 
-	auth, ok := domain.AuthorityFromContext(ctx)
+	auth, ok := ac.AuthorityFrom(ctx)
 	if !ok {
-		h.log.Debugw(tid, "user not found in context")
+		h.log.Debugw(ctx, "user not found in context")
 		h.resp.SendUnauthorized(ctx, rw)
 		return
 	}
 
 	if sessionID == "" {
-		h.log.Debugw(tid, "sessionID is empty")
+		h.log.Debugw(ctx, "sessionID is empty")
 		h.resp.SendBadRequest(ctx, rw, "sessionID param is required")
 		return
 	}
 
 	sid, err := strconv.ParseUint(sessionID, 10, 64)
 	if err != nil {
-		h.log.Errorw(tid, "failed to parse sessionID", err)
+		h.log.Errorw(ctx, "failed to parse sessionID", err)
 		h.resp.SendBadRequest(ctx, rw, "sessionID param must be a valid uint64 value")
 		return
 	}
@@ -90,44 +89,43 @@ func (h *SessionHandler) GetByID(rw http.ResponseWriter, r *http.Request) {
 	session, err := h.service.GetByID(ctx, auth.UserID, sid)
 	if err != nil {
 		if errors.Is(err, domain.ErrSessionNotFound) {
-			h.log.Debugw(tid, "session not found", "sessionID", sessionID)
+			h.log.Debugw(ctx, "session not found", "sessionID", sessionID)
 			h.resp.SendNotFound(ctx, rw, "Session with provided ID not found")
 			return
 		}
 
-		h.log.Errorw(tid, "failed to get session", "sessionID", sessionID, err)
+		h.log.Errorw(ctx, "failed to get session", "sessionID", sessionID, err)
 		h.resp.SendInternalServerError(ctx, rw)
 		return
 	}
 
-	h.log.Debugw(tid, "Got session", "sessionID", session.ID)
+	h.log.Debugw(ctx, "Got session", "sessionID", session.ID)
 	h.resp.Send(ctx, rw, http.StatusOK, map[string][]string{
-		rest.LastModifiedHeader: {session.UpdatedAt.Format(http.TimeFormat)},
+		LastModifiedHeader: {session.UpdatedAt.Format(http.TimeFormat)},
 	}, toDTO(session))
 }
 
 func (h *SessionHandler) GetAllByUserID(rw http.ResponseWriter, r *http.Request) {
 	var (
 		ctx = r.Context()
-		tid = domain.TraceIDFromContext(ctx)
 	)
 
-	auth, ok := domain.AuthorityFromContext(ctx)
+	auth, ok := ac.AuthorityFrom(ctx)
 	if !ok {
-		h.log.Debugw(tid, "user not found in context")
+		h.log.Debugw(ctx, "user not found in context")
 		h.resp.SendUnauthorized(ctx, rw)
 		return
 	}
-	h.log.Debugw(tid, "Get all sessions by user", "userID", auth.UserID)
+	h.log.Debugw(ctx, "Get all sessions by user", "userID", auth.UserID)
 
 	sessions, err := h.service.GetByUserID(ctx, auth.UserID)
 	if err != nil {
-		h.log.Errorw(tid, "failed to get sessions", "userID", auth.UserID, err)
+		h.log.Errorw(ctx, "failed to get sessions", "userID", auth.UserID, err)
 		h.resp.SendInternalServerError(ctx, rw)
 		return
 	}
 
-	h.log.Debugw(tid, "Got sessions", "count", len(sessions))
+	h.log.Debugw(ctx, "Got sessions", "count", len(sessions))
 	res := make([]*Session, 0, len(sessions))
 	for _, session := range sessions {
 		res = append(res, toDTO(session))
@@ -139,39 +137,38 @@ func (h *SessionHandler) GetAllByUserID(rw http.ResponseWriter, r *http.Request)
 func (h *SessionHandler) Create(rw http.ResponseWriter, r *http.Request) {
 	var (
 		ctx = r.Context()
-		tid = domain.TraceIDFromContext(ctx)
 	)
 
-	user, ok := domain.AuthorityFromContext(ctx)
+	user, ok := ac.AuthorityFrom(ctx)
 	if !ok {
-		h.log.Debugw(tid, "user not found in context")
+		h.log.Debugw(ctx, "user not found in context")
 		h.resp.SendUnauthorized(ctx, rw)
 		return
 	}
 
 	var req sessionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.log.Debugw(tid, "failed to decode body", err)
+		h.log.Debugw(ctx, "failed to decode body", err)
 		h.resp.SendBadRequest(ctx, rw, "failed to parse request")
 		return
 	}
 
 	if strings.TrimSpace(req.Name) == "" {
-		h.log.Debugw(tid, "name is empty")
+		h.log.Debugw(ctx, "name is empty")
 		h.resp.SendBadRequest(ctx, rw, "name param is required")
 		return
 	}
 
 	session, err := h.service.Create(ctx, user.UserID, req.Name)
 	if err != nil {
-		h.log.Errorw(tid, "failed to create session", err)
+		h.log.Errorw(ctx, "failed to create session", err)
 		h.resp.SendInternalServerError(ctx, rw)
 		return
 	}
-	h.log.Debugw(tid, "Created session", "id", session.ID)
+	h.log.Debugw(ctx, "Created session", "id", session.ID)
 
 	h.resp.Send(ctx, rw, http.StatusCreated, map[string][]string{
-		rest.LastModifiedHeader: {session.UpdatedAt.Format(http.TimeFormat)},
+		LastModifiedHeader: {session.UpdatedAt.Format(http.TimeFormat)},
 	}, toDTO(session))
 }
 
@@ -179,32 +176,31 @@ func (h *SessionHandler) Update(rw http.ResponseWriter, r *http.Request) {
 	var (
 		ctx       = r.Context()
 		sessionID = chi.URLParam(r, "sessionID")
-		tid       = domain.TraceIDFromContext(ctx)
 	)
 
 	if sessionID == "" {
-		h.log.Debugw(tid, "sessionID is empty")
+		h.log.Debugw(ctx, "sessionID is empty")
 		h.resp.SendBadRequest(ctx, rw, "sessionID param is required")
 		return
 	}
 
-	auth, ok := domain.AuthorityFromContext(ctx)
+	auth, ok := ac.AuthorityFrom(ctx)
 	if !ok {
-		h.log.Debugw(tid, "user not found in context")
+		h.log.Debugw(ctx, "user not found in context")
 		h.resp.SendUnauthorized(ctx, rw)
 		return
 	}
 
 	sid, err := strconv.ParseUint(sessionID, 10, 64)
 	if err != nil {
-		h.log.Errorw(tid, "failed to parse sessionID", err)
+		h.log.Errorw(ctx, "failed to parse sessionID", err)
 		h.resp.SendBadRequest(ctx, rw, "sessionID param must be a valid uint64 value")
 		return
 	}
 
 	var req sessionRequest
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.log.Debugw(tid, "failed to decode body", err)
+		h.log.Debugw(ctx, "failed to decode body", err)
 		h.resp.SendBadRequest(ctx, rw, "failed to parse request")
 		return
 	}
@@ -212,25 +208,25 @@ func (h *SessionHandler) Update(rw http.ResponseWriter, r *http.Request) {
 	session, err := h.service.Update(ctx, auth.UserID, sid, req.Name)
 	if err != nil {
 		if errors.Is(err, domain.ErrSessionNotFound) {
-			h.log.Debugw(tid, "session not found", "sessionID", sessionID)
+			h.log.Debugw(ctx, "session not found", "sessionID", sessionID)
 			h.resp.SendNotFound(ctx, rw, "Session with provided ID not found")
 			return
 		}
 
 		if errors.Is(err, domain.ErrSessionPermissionDenied) {
-			h.log.Debugw(tid, "permission denied", "sessionID", sessionID)
+			h.log.Debugw(ctx, "permission denied", "sessionID", sessionID)
 			h.resp.SendNotFound(ctx, rw, "session not found")
 			return
 		}
 
-		h.log.Errorw(tid, "failed to update session", err)
+		h.log.Errorw(ctx, "failed to update session", err)
 		h.resp.SendInternalServerError(ctx, rw)
 		return
 	}
 
-	h.log.Debugw(tid, "Updated session", "id", session.ID)
+	h.log.Debugw(ctx, "Updated session", "id", session.ID)
 	h.resp.Send(ctx, rw, http.StatusOK, map[string][]string{
-		rest.LastModifiedHeader: {session.UpdatedAt.Format(http.TimeFormat)},
+		LastModifiedHeader: {session.UpdatedAt.Format(http.TimeFormat)},
 	}, toDTO(session))
 }
 
@@ -238,43 +234,42 @@ func (h *SessionHandler) Delete(rw http.ResponseWriter, r *http.Request) {
 	var (
 		ctx       = r.Context()
 		sessionID = chi.URLParam(r, "sessionID")
-		tid       = domain.TraceIDFromContext(ctx)
 	)
 
 	if sessionID == "" {
-		h.log.Debugw(tid, "sessionID is empty")
+		h.log.Debugw(ctx, "sessionID is empty")
 		h.resp.SendBadRequest(ctx, rw, "sessionID param is required")
 		return
 	}
 
-	auth, ok := domain.AuthorityFromContext(ctx)
+	auth, ok := ac.AuthorityFrom(ctx)
 	if !ok {
-		h.log.Debugw(tid, "user not found in context")
+		h.log.Debugw(ctx, "user not found in context")
 		h.resp.SendUnauthorized(ctx, rw)
 		return
 	}
 
 	sid, err := strconv.ParseUint(sessionID, 10, 64)
 	if err != nil {
-		h.log.Errorw(tid, "failed to parse sessionID", err)
+		h.log.Errorw(ctx, "failed to parse sessionID", err)
 		h.resp.SendBadRequest(ctx, rw, "sessionID param must be a valid uint64 value")
 		return
 	}
 
 	if err = h.service.Delete(ctx, auth.UserID, sid); err != nil {
 		if errors.Is(err, domain.ErrSessionNotFound) {
-			h.log.Debugw(tid, "session not found", "sessionID", sessionID)
+			h.log.Debugw(ctx, "session not found", "sessionID", sessionID)
 			h.resp.SendNotFound(ctx, rw, "Session with provided ID not found")
 			return
 		}
 
 		if errors.Is(err, domain.ErrSessionPermissionDenied) {
-			h.log.Debugw(tid, "permission denied", "sessionID", sessionID)
+			h.log.Debugw(ctx, "permission denied", "sessionID", sessionID)
 			h.resp.SendNotFound(ctx, rw, "session not found")
 			return
 		}
 
-		h.log.Errorw(tid, "failed to delete session", err)
+		h.log.Errorw(ctx, "failed to delete session", err)
 		h.resp.SendInternalServerError(ctx, rw)
 		return
 	}
@@ -284,98 +279,100 @@ func (h *SessionHandler) Delete(rw http.ResponseWriter, r *http.Request) {
 
 func (h *SessionHandler) GetClipboard(rw http.ResponseWriter, r *http.Request) {
 	var (
-		ifLastModified = r.Header.Get(rest.IfModifiedSinceHeader)
+		ctx            = r.Context()
+		ifLastModified = r.Header.Get(IfModifiedSinceHeader)
 		sessionID      = chi.URLParam(r, "sessionID")
 	)
 
 	if sessionID == "" {
-		h.log.Debugw(domain.TraceIDFromContext(r.Context()), "sessionID is empty")
-		h.resp.SendBadRequest(r.Context(), rw, "sessionID param is required")
+		h.log.Debugw(ctx, "sessionID is empty")
+		h.resp.SendBadRequest(ctx, rw, "sessionID param is required")
 		return
 	}
 
 	sid, err := strconv.ParseUint(sessionID, 10, 64)
 	if err != nil {
-		h.log.Errorw(domain.TraceIDFromContext(r.Context()), "failed to parse sessionID", err)
-		h.resp.SendBadRequest(r.Context(), rw, "sessionID param must be a valid uint64 value")
+		h.log.Errorw(ctx, "failed to parse sessionID", err)
+		h.resp.SendBadRequest(ctx, rw, "sessionID param must be a valid uint64 value")
 		return
 	}
 
 	clipboard, err := h.clipboardRepo.GetBySessionID(sid)
 	if err != nil {
 		if errors.Is(err, dal.ErrNotFound) {
-			h.log.Debugw(domain.TraceIDFromContext(r.Context()), "clipboard not found", "id", sessionID)
+			h.log.Debugw(ctx, "clipboard not found", "id", sessionID)
 			rw.WriteHeader(http.StatusNoContent)
 			return
 		}
 
-		h.log.Errorw(domain.TraceIDFromContext(r.Context()), "failed to get clipboard", err)
-		h.resp.SendInternalServerError(r.Context(), rw)
+		h.log.Errorw(ctx, "failed to get clipboard", err)
+		h.resp.SendInternalServerError(ctx, rw)
 		return
 	}
 
 	lastModified := clipboard.UpdatedAt.UTC().Format(http.TimeFormat)
 	if ifLastModified != "" && lastModified == ifLastModified {
-		h.log.Debugw(domain.TraceIDFromContext(r.Context()), "Not modified", "id", sid)
+		h.log.Debugw(ctx, "Not modified", "id", sid)
 		rw.WriteHeader(http.StatusNotModified)
 		return
 	}
 
-	h.log.Debugw(domain.TraceIDFromContext(r.Context()), "Got session", "id", sid)
-	rw.Header().Set(rest.LastModifiedHeader, lastModified)
-	rw.Header().Set(rest.ContentTypeHeader, clipboard.ContentType)
+	h.log.Debugw(ctx, "Got session", "id", sid)
+	rw.Header().Set(LastModifiedHeader, lastModified)
+	rw.Header().Set(ContentTypeHeader, clipboard.ContentType)
 	if _, err = rw.Write(clipboard.Content); err != nil {
-		h.log.Errorw(domain.TraceIDFromContext(r.Context()), "failed to write content", err)
+		h.log.Errorw(ctx, "failed to write content", err)
 	}
 }
 
 func (h *SessionHandler) SetClipboard(rw http.ResponseWriter, r *http.Request) {
 	var (
-		contentType = r.Header.Get(rest.ContentTypeHeader)
+		ctx         = r.Context()
+		contentType = r.Header.Get(ContentTypeHeader)
 		sessionID   = chi.URLParam(r, "sessionID")
 	)
 
 	if strings.ToLower(contentType) != "text/plain" {
-		h.log.Debugw(domain.TraceIDFromContext(r.Context()), "Content-Type is not text/plain")
-		h.resp.SendBadRequest(r.Context(), rw, "Content-Type text/plain is required")
+		h.log.Debugw(ctx, "Content-Type is not text/plain")
+		h.resp.SendBadRequest(ctx, rw, "Content-Type text/plain is required")
 		return
 	}
 
 	if sessionID == "" {
-		h.log.Debugw(domain.TraceIDFromContext(r.Context()), "sessionID is empty")
-		h.resp.SendBadRequest(r.Context(), rw, "sessionID param is required")
+		h.log.Debugw(ctx, "sessionID is empty")
+		h.resp.SendBadRequest(ctx, rw, "sessionID param is required")
 		return
 	}
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		h.log.Errorw(domain.TraceIDFromContext(r.Context()), "failed to read body", err)
-		h.resp.SendInternalServerError(r.Context(), rw)
+		h.log.Errorw(ctx, "failed to read body", err)
+		h.resp.SendInternalServerError(ctx, rw)
 		return
 	}
 
 	sid, err := strconv.ParseUint(sessionID, 10, 64)
 	if err != nil {
-		h.log.Errorw(domain.TraceIDFromContext(r.Context()), "failed to parse sessionID", err)
-		h.resp.SendBadRequest(r.Context(), rw, "sessionID param must be a valid uint64 value")
+		h.log.Errorw(ctx, "failed to parse sessionID", err)
+		h.resp.SendBadRequest(ctx, rw, "sessionID param must be a valid uint64 value")
 		return
 	}
 
 	clipboard, err := h.clipboardRepo.SetBySessionID(sid, contentType, body)
 	if err != nil {
 		if errors.Is(err, dal.ErrNotFound) {
-			h.log.Debugw(domain.TraceIDFromContext(r.Context()), "session not found", "id", sessionID)
-			h.resp.SendNotFound(r.Context(), rw, "Session with provided ID not found")
+			h.log.Debugw(ctx, "session not found", "id", sessionID)
+			h.resp.SendNotFound(ctx, rw, "Session with provided ID not found")
 			return
 		}
 
-		h.log.Errorw(domain.TraceIDFromContext(r.Context()), "failed to set content", err)
-		h.resp.SendInternalServerError(r.Context(), rw)
+		h.log.Errorw(ctx, "failed to set content", err)
+		h.resp.SendInternalServerError(ctx, rw)
 		return
 	}
 
-	h.log.Debugw(domain.TraceIDFromContext(r.Context()), "Set content", "id", sessionID)
-	rw.Header().Set(rest.LastModifiedHeader, clipboard.UpdatedAt.UTC().Format(http.TimeFormat))
+	h.log.Debugw(ctx, "Set content", "id", sessionID)
+	rw.Header().Set(LastModifiedHeader, clipboard.UpdatedAt.UTC().Format(http.TimeFormat))
 	rw.WriteHeader(http.StatusNoContent)
 }
 

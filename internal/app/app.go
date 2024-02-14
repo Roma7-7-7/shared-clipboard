@@ -18,7 +18,7 @@ import (
 	"github.com/Roma7-7-7/shared-clipboard/internal/handle"
 	"github.com/Roma7-7-7/shared-clipboard/internal/handle/cookie"
 	"github.com/Roma7-7-7/shared-clipboard/internal/handle/jwt"
-	"github.com/Roma7-7-7/shared-clipboard/tools/log"
+	"github.com/Roma7-7-7/shared-clipboard/internal/log"
 )
 
 type (
@@ -29,20 +29,20 @@ type (
 	}
 )
 
-func NewApp(conf config.App, traced log.TracedLogger) (*App, error) {
-	traced.Infow(domain.RuntimeTraceID, "Initializing SQL DB")
+func NewApp(ctx context.Context, conf config.App, traced log.TracedLogger) (*App, error) {
+	traced.Infow(ctx, "Initializing SQL DB")
 	sqlDB, err := sql.Open(conf.DB.SQL.Driver, conf.DB.SQL.DataSource)
 	if err != nil {
 		return nil, fmt.Errorf("open sql db: %w", err)
 	}
 
-	traced.Infow(domain.RuntimeTraceID, "Initializing Bolt DB")
+	traced.Infow(ctx, "Initializing Bolt DB")
 	boltDB, err := bolt.Open(conf.DB.Bolt.Path, 0600, nil)
 	if err != nil {
 		return nil, fmt.Errorf("open bolt db: %w", err)
 	}
 
-	traced.Infow(domain.RuntimeTraceID, "Initializing repositories")
+	traced.Infow(ctx, "Initializing repositories")
 	userRpo, err := postgre.NewUserRepository(sqlDB)
 	if err != nil {
 		return nil, fmt.Errorf("create user repository: %w", err)
@@ -60,17 +60,17 @@ func NewApp(conf config.App, traced log.TracedLogger) (*App, error) {
 		return nil, fmt.Errorf("create jwt repository: %w", err)
 	}
 
-	traced.Infow(domain.RuntimeTraceID, "Initializing services")
+	traced.Infow(ctx, "Initializing services")
 	userService := domain.NewUserService(userRpo, traced)
 
-	traced.Infow(domain.RuntimeTraceID, "Initializing components")
+	traced.Infow(ctx, "Initializing components")
 	jwtProcessor := jwt.NewProcessor(conf.JWT)
 	cookieProcessor := cookie.NewProcessor(jwtProcessor, conf.Cookie)
 
 	sessionService := domain.NewSessionService(sessionRepo, traced)
 
-	traced.Infow(domain.RuntimeTraceID, "Creating router")
-	h, err := handle.NewRouter(handle.Dependencies{
+	traced.Infow(ctx, "Creating router")
+	h, err := handle.NewRouter(ctx, handle.Dependencies{
 		Config:              conf,
 		CookieProcessor:     cookieProcessor,
 		UserService:         userService,
@@ -107,20 +107,20 @@ func (a *App) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
-			a.log.Infow(domain.RuntimeTraceID, "Shutting down server")
+			a.log.Infow(ctx, "Shutting down server")
 			if err := s.Shutdown(ctx); err != nil {
-				a.log.Errorw(domain.RuntimeTraceID, "Shutdown server", err)
+				a.log.Errorw(ctx, "Shutdown server", err)
 			}
-			a.log.Infow(domain.RuntimeTraceID, "Server stopped")
+			a.log.Infow(ctx, "Server stopped")
 			return
 		}
 	}()
 
-	a.log.Infow(domain.RuntimeTraceID, "Starting server", "address", addr)
+	a.log.Infow(ctx, "Starting server", "address", addr)
 	if err := s.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("server listen: %w", err)
 	}
-	a.log.Infow(domain.RuntimeTraceID, "Server stopped")
+	a.log.Infow(ctx, "Server stopped")
 
 	return nil
 }

@@ -10,8 +10,8 @@ import (
 
 	"github.com/Roma7-7-7/shared-clipboard/internal/app"
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
-	"github.com/Roma7-7-7/shared-clipboard/internal/domain"
-	"github.com/Roma7-7-7/shared-clipboard/tools/log"
+	ac "github.com/Roma7-7-7/shared-clipboard/internal/context"
+	"github.com/Roma7-7-7/shared-clipboard/internal/log"
 )
 
 var configPath = flag.String("config", "", "path to config file")
@@ -42,13 +42,14 @@ func main() {
 	sLog := l.Sugar()
 	traced := log.NewZapTracedLogger(sLog)
 
-	if a, err = app.NewApp(conf, traced); err != nil {
-		traced.Errorw(domain.RuntimeTraceID, "Create app", err)
+	bootstrapCtx := ac.WithTraceID(context.Background(), "bootstrap")
+	if a, err = app.NewApp(bootstrapCtx, conf, traced); err != nil {
+		traced.Errorw(bootstrapCtx, "Create app", err)
 		os.Exit(1)
 	}
 
-	if err = a.Run(context.Background()); err != nil {
-		traced.Errorw(domain.RuntimeTraceID, "Run", err)
+	if err = a.Run(ac.WithTraceID(context.Background(), "runtime")); err != nil {
+		traced.Errorw(bootstrapCtx, "Run", err)
 		os.Exit(1)
 	}
 }

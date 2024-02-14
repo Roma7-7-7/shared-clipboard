@@ -1,10 +1,10 @@
-package domain
+package context
 
 import (
 	"context"
-)
 
-const RuntimeTraceID = "runtime"
+	"github.com/Roma7-7-7/shared-clipboard/tools"
+)
 
 type (
 	Authority struct {
@@ -16,22 +16,22 @@ type (
 	traceIDCtxKey       struct{}
 )
 
-func ContextWithTraceID(ctx context.Context, traceID string) context.Context {
+func WithTraceID(ctx context.Context, traceID string) context.Context {
 	return context.WithValue(ctx, &traceIDCtxKey{}, traceID)
 }
 
-func TraceIDFromContext(ctx context.Context) string {
+func TraceIDFrom(ctx context.Context) string {
 	if traceID, ok := ctx.Value(&traceIDCtxKey{}).(string); ok {
 		return traceID
 	}
-	return "undefined"
+	return "undefined#" + tools.RandomAlphanumericKey(8)
 }
 
-func AuthorityFromContext(ctx context.Context) (*Authority, bool) {
+func AuthorityFrom(ctx context.Context) (*Authority, bool) {
 	token, ok := ctx.Value(authorityContextKey{}).(*Authority)
 	return token, ok
 }
 
-func ContextWithAuthority(ctx context.Context, authority *Authority) context.Context {
+func WithAuthority(ctx context.Context, authority *Authority) context.Context {
 	return context.WithValue(ctx, authorityContextKey{}, authority)
 }

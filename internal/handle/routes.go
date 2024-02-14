@@ -1,6 +1,7 @@
 package handle
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -12,7 +13,7 @@ import (
 
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
 	"github.com/Roma7-7-7/shared-clipboard/internal/domain"
-	"github.com/Roma7-7-7/shared-clipboard/tools/log"
+	"github.com/Roma7-7-7/shared-clipboard/internal/log"
 )
 
 type Dependencies struct {
@@ -24,8 +25,8 @@ type Dependencies struct {
 	ClipboardRepository
 }
 
-func NewRouter(deps Dependencies, log log.TracedLogger) (*chi.Mux, error) {
-	log.Infow(domain.RuntimeTraceID, "Initializing router")
+func NewRouter(ctx context.Context, deps Dependencies, log log.TracedLogger) (*chi.Mux, error) {
+	log.Infow(ctx, "Initializing router")
 
 	r := chi.NewRouter()
 	conf := deps.Config
@@ -69,9 +70,9 @@ func NewRouter(deps Dependencies, log log.TracedLogger) (*chi.Mux, error) {
 	r.NotFound(handleNotFound(resp))
 	r.MethodNotAllowed(handleMethodNotAllowed(resp))
 
-	printRoutes(r, log)
+	printRoutes(ctx, r, log)
 
-	log.Infow(domain.RuntimeTraceID, "Router initialized")
+	log.Infow(ctx, "Router initialized")
 	return r, nil
 }
 
@@ -87,13 +88,13 @@ func handleMethodNotAllowed(resp *responder) func(rw http.ResponseWriter, r *htt
 	}
 }
 
-func printRoutes(r *chi.Mux, logger log.TracedLogger) {
-	logger.Infow(domain.RuntimeTraceID, "Routes:")
+func printRoutes(ctx context.Context, r *chi.Mux, logger log.TracedLogger) {
+	logger.Infow(ctx, "Routes:")
 	err := chi.Walk(r, func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
-		logger.Infow(domain.RuntimeTraceID, fmt.Sprintf("[%s]: '%s' has %d middlewares", method, route, len(middlewares)))
+		logger.Infow(ctx, fmt.Sprintf("[%s]: '%s' has %d middlewares", method, route, len(middlewares)))
 		return nil
 	})
 	if err != nil {
-		logger.Errorw(domain.RuntimeTraceID, "Failed to walk routes", err)
+		logger.Errorw(ctx, "Failed to walk routes", err)
 	}
 }

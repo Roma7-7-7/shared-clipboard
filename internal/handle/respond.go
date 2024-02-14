@@ -7,7 +7,14 @@ import (
 	"strings"
 
 	"github.com/Roma7-7-7/shared-clipboard/internal/domain"
-	"github.com/Roma7-7-7/shared-clipboard/tools/log"
+	"github.com/Roma7-7-7/shared-clipboard/internal/log"
+)
+
+const (
+	ContentTypeHeader     = "Content-Type"
+	ContentTypeJSON       = "application/json"
+	LastModifiedHeader    = "Last-Modified"
+	IfModifiedSinceHeader = "If-Modified-Since"
 )
 
 type genericErrorResponse struct {
@@ -22,20 +29,16 @@ type responder struct {
 }
 
 func (r *responder) Send(ctx context.Context, rw http.ResponseWriter, status int, headers map[string][]string, value interface{}) {
-	var (
-		tid            = domain.TraceIDFromContext(ctx)
-		contentTypeSet = false
-	)
-
 	body, err := json.Marshal(value)
 	if err != nil {
-		r.log.Errorw(tid, "Failed to marshal response", err)
+		r.log.Errorw(ctx, "Failed to marshal response", err)
 		r.SendInternalServerError(ctx, rw)
 		return
 	}
 
+	contentTypeSet := false
 	for k, v := range headers {
-		if strings.ToLower(k) == "content-type" {
+		if strings.EqualFold(k, ContentTypeHeader) {
 			contentTypeSet = true
 		}
 		for _, v := range v {
@@ -43,13 +46,13 @@ func (r *responder) Send(ctx context.Context, rw http.ResponseWriter, status int
 		}
 	}
 	if !contentTypeSet {
-		rw.Header().Set("Content-Type", "application/json")
+		rw.Header().Set(ContentTypeJSON, ContentTypeJSON)
 	}
 	rw.WriteHeader(status)
 
 	if n, err := rw.Write(body); err != nil {
 		// no reason to return error if we already wrote some bytes
-		r.log.Errorw(tid, "Failed to write response", "bytesWritten", n, err)
+		r.log.Errorw(ctx, "Failed to write response", "bytesWritten", n, err)
 	}
 }
 
