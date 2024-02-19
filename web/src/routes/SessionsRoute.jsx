@@ -1,34 +1,42 @@
 import {useEffect, useState} from "react";
-import {Col, Container, Row, Table} from "react-bootstrap";
+import {Alert, Col, Container, Row, Table} from "react-bootstrap";
 import {apiBaseURL} from "../env.jsx";
 import {Link} from "react-router-dom";
 import {Pen, Trash} from "react-bootstrap-icons";
 
 export default function SessionsRoute() {
+    const [alertMessage, setAlertMessage] = useState("")
     return (
         <Container>
-            <Row className="mb-5">
-                <Col className="text-center">
-                    <h2>Sessions</h2>
-                </Col>
-            </Row>
             <Row>
                 <Col/>
                 <Col xs="5">
-                    <SessionsTable/>
+                    <Row className="mb-5 text-center">
+                        <h2>Sessions</h2>
+                    </Row>
+                    {alertMessage && <Row className="mb-3">
+                        <Alert variant="danger">
+                            {alertMessage}
+                        </Alert>
+                    </Row>}
+                    <Row>
+                        <SessionsTable onSuccess={() => {setAlertMessage("")}} onError={(msg) => {setAlertMessage(msg)}} />
+                    </Row>
+                    <Row className="text-center">
+                        <Col />
+                        <Col>
+                            <Link to="new" className="btn btn-primary">New Session</Link>
+                        </Col>
+                        <Col />
+                    </Row>
                 </Col>
                 <Col/>
-            </Row>
-            <Row>
-                <Col className="text-center">
-                    <Link to="new" className="btn btn-primary">New Session</Link>
-                </Col>
             </Row>
         </Container>
     )
 }
 
-function SessionsTable() {
+function SessionsTable({onSuccess, onError}) {
     const [items, setItems] = useState([])
 
     function refresh() {
@@ -41,10 +49,12 @@ function SessionsTable() {
                 if (response.status === 200) {
                     return response.json();
                 }
+                onError("Failed to fetch sessions")
                 return Promise.reject(response.status);
             })
             .then(data => {
                 setItems(data.map((session) => <SessionItem key={session["session_id"]} session={session} onDelete={() => refresh()} />));
+                onSuccess()
             })
             .catch(error => {
                 console.error('Error:', error)
@@ -98,7 +108,7 @@ function SessionItem({session, onDelete}) {
 
     return (
         <tr>
-            <td>{session['name']}</td>
+            <td><Link to={`${session['session_id']}/clipboard`}>{session['name']}</Link></td>
             <td width="200px">{formatLastUsedAt(session['updated_at_millis'])}</td>
             <td className="text-center">
                 <Link to={`${session['session_id']}/edit`} className="btn btn-link">
