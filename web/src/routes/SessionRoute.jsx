@@ -1,11 +1,13 @@
-import {useState, useEffect} from "react";
-import {useParams} from "react-router-dom";
+import {useEffect, useState} from "react";
+import {useNavigate, useParams} from "react-router-dom";
 import {apiBaseURL} from "../env.jsx";
 import {Button, Col, Container, Form, InputGroup, Row} from "react-bootstrap";
+import axios from "axios";
 
 export default function SessionRoute({action}) {
     const [alertMsg, setAlertMsg] = useState("")
     const [session, setSession] = useState(null)
+    const navigate = useNavigate()
 
     const params = useParams()
     let handleSubmit;
@@ -20,22 +22,10 @@ export default function SessionRoute({action}) {
                     return
                 }
 
-                fetch(apiBaseURL + "/v1/sessions", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({name: session.name}),
-                    credentials: "include",
-                }).then(response => {
-                    if (response.status === 201) {
-                        return response.json()
-                    } else {
-                        setAlertMsg("Failed to create session")
-                        return Promise.reject("Failed to create session")
-                    }
-                }).then(resp => {
-                    window.location.href = "/sessions/" + resp["session_id"] + "/clipboard"
+                axios.post(apiBaseURL + "/v1/sessions", {
+                    name: session.name
+                }, {withCredentials: true}).then(response => {
+                    navigate("/sessions/" + response.data["session_id"] + "/clipboard")
                 }).catch(error => {
                     console.log("Error: ", error)
                     setAlertMsg("Failed to create session")
@@ -44,25 +34,13 @@ export default function SessionRoute({action}) {
             break
         case "edit":
             useEffect(() => {
-                fetch(apiBaseURL + "/v1/sessions/" + params.sessionId, {
-                    method: "GET",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    credentials: "include",
-                }).then(response => {
-                    if (response.status === 200) {
-                        return response.json()
-                    } else {
-                        setAlertMsg("Failed to fetch session")
-                        return Promise.reject("Failed to fetch session")
-                    }
-                }).then(resp => {
-                    setSession({
-                        sessionId: resp["session_id"],
-                        name: resp["name"],
-                    })
-                }).catch(error => {
+                axios.get(apiBaseURL + "/v1/sessions/" + params.sessionId, {withCredentials: true})
+                    .then(response => {
+                        setSession({
+                            sessionId: response.data["session_id"],
+                            name: response.data["name"],
+                        })
+                    }).catch(error => {
                     console.log("Error: ", error)
                     setAlertMsg("Failed to fetch session")
                 })
@@ -76,22 +54,10 @@ export default function SessionRoute({action}) {
                     return
                 }
 
-                fetch(apiBaseURL + "/v1/sessions/" + session.sessionId, {
-                    method: "PUT",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({name: session.name}),
-                    credentials: "include",
-                }).then(response => {
-                    if (response.status === 200) {
-                        return response.json()
-                    } else {
-                        setAlertMsg("Failed to update session")
-                        return Promise.reject("Failed to update session")
-                    }
-                }).then(resp => {
-                    window.location.href = "/sessions/" + resp["session_id"] + "/clipboard"
+                axios.put(apiBaseURL + "/v1/sessions/" + session.sessionId, {
+                    name: session.name
+                }, {withCredentials: true}).then(response => {
+                    navigate("/sessions/" + response.data["session_id"] + "/clipboard")
                 }).catch(error => {
                     console.log("Error: ", error)
                     setAlertMsg("Failed to update session")

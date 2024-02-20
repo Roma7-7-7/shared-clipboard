@@ -3,6 +3,7 @@ import {Alert, Col, Container, Row, Table} from "react-bootstrap";
 import {apiBaseURL} from "../env.jsx";
 import {Link} from "react-router-dom";
 import {Pen, Trash} from "react-bootstrap-icons";
+import axios from "axios";
 
 export default function SessionsRoute() {
     const [alertMessage, setAlertMessage] = useState("")
@@ -40,25 +41,14 @@ function SessionsTable({onSuccess, onError}) {
     const [items, setItems] = useState([])
 
     function refresh() {
-        fetch(apiBaseURL + '/v1/sessions', {
-            "method": "GET",
-            "headers": {"Content-Type": "application/json"},
-            credentials: 'include',
-        })
+        axios.get(apiBaseURL + '/v1/sessions', {withCredentials: true})
             .then(response => {
-                if (response.status === 200) {
-                    return response.json();
-                }
-                onError("Failed to fetch sessions")
-                return Promise.reject(response.status);
-            })
-            .then(data => {
-                setItems(data.map((session) => <SessionItem key={session["session_id"]} session={session} onDelete={() => refresh()} />));
+                setItems(response.data.map((session) => <SessionItem key={session["session_id"]} session={session} onDelete={() => refresh()} />));
                 onSuccess()
-            })
-            .catch(error => {
-                console.error('Error:', error)
-            })
+            }).catch(error => {
+            console.log("Error: ", error)
+            onError("Failed to fetch sessions")
+        })
     }
 
     useEffect(() => {
@@ -86,23 +76,12 @@ function SessionsTable({onSuccess, onError}) {
 function SessionItem({session, onDelete}) {
     function handleDelete(event, sessionID) {
         event.preventDefault()
-        fetch(apiBaseURL + '/v1/sessions/' + sessionID, {
-            "method": "DELETE",
-            "headers": {"Content-Type": "application/json"},
-            credentials: 'include',
-        })
+        axios.delete(apiBaseURL + '/v1/sessions/' + sessionID, {withCredentials: true})
             .then(response => {
-                if (response.status === 204) {
-                    onDelete()
-                    return
-                }
-                return Promise.reject(response.status);
-            })
-            .then(data => {
-                console.log(data)
+                onDelete()
             })
             .catch(error => {
-                console.error('Error:', error)
+                console.log("Error: ", error)
             })
     }
 
