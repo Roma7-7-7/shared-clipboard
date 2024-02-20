@@ -1,36 +1,22 @@
 import {useState} from "react";
 import {Alert, Modal} from "react-bootstrap";
-import {Outlet} from "react-router-dom";
+import {Outlet, useNavigate, useNavigation} from "react-router-dom";
 import {apiBaseURL} from "../env.jsx";
 import {getUserInfo, setUserInfo} from "../storage.js";
 import Navbar from "../components/Navbar.jsx";
 import AuthModal from "../components/AuthModal.jsx";
+import axios from "axios";
 
 export default function RootRoute() {
     const [authModalTitle, setAuthModalTitle] = useState(null)
     const [alertMsg, setAlertMsg] = useState(null)
+    let navigate = useNavigate();
 
     function onSignOutClicked() {
-        fetch(apiBaseURL + '/signout', {
-            "method": "POST",
-            "headers": {"Content-Type": "application/json"},
-            "body": JSON.stringify({}),
-            credentials: 'include',
-        })
+        axios.post(apiBaseURL + '/signout', {}, {withCredentials: true})
             .then(response => {
-                if (response.status === 204) {
-                    return Promise.resolve({"error": false, "message": "Signed out successfully"});
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (!data["error"]) {
-                    userInfo = setUserInfo(null);
-                    window.location.pathname = "/";
-                    return;
-                }
-
-                setAlertMsg(data["message"]);
+                setUserInfo(null);
+                navigate("/");
             })
             .catch(error => {
                 console.error('Error:', error)

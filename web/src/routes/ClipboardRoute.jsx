@@ -1,24 +1,24 @@
 import {Col, Container, Row} from "react-bootstrap";
+import {useCallback, useEffect, useRef, useState} from "react";
+import {useBeforeUnload, useParams} from "react-router-dom";
 import {apiBaseURL} from "../env.jsx";
-import {useEffect, useRef, useState} from "react";
-import {useParams} from "react-router-dom";
+import axios from "axios";
 
 export default function ClipboardRoute() {
-    const [alertMsg, setAlertMsg] = useState("")
-    const [content, setContent] = useState("")
-    const lastModified = useRef("");
-
     const params = useParams();
+    const [alertMsg, setAlertMsg] = useState("")
+    const content = useRef("")
+    const lastModified = useRef("");
+    const timer = useRef()
+
     function refresh() {
         const headers = {}
         if (lastModified.current) {
             headers['If-Modified-Since'] = lastModified
         }
-        fetch(apiBaseURL + `/v1/sessions/${params.sessionId}/clipboard`, {
-            method: "GET",
+        axios.get(apiBaseURL + `/v1/sessions/${params.sessionId}/clipboard`, {
             headers: headers,
-            credentials: 'include',
-            cache: "no-store",
+            withCredentials: true,
         })
             .then(response => {
                 if (response.status===204 || response.status === 304) {
@@ -29,16 +29,16 @@ export default function ClipboardRoute() {
                         return Promise.reject(null);
                     }
                     lastModified.current = response.headers.get('Last-Modified')
-                    return response.text();
+                    return response.data;
                 }
 
-                return Promise.reject(response.text());
+                return Promise.reject(response.data);
             })
             .then(data => {
                 if (alertMsg !== "") {
                     setAlertMsg("")
                 }
-                setContent(data);
+                content.current.value = data;
             })
             .catch(error => {
                 if (error === null) {
@@ -50,15 +50,13 @@ export default function ClipboardRoute() {
     }
 
     const handleShare = () => {
-        fetch(apiBaseURL + `/v1/sessions/${params.sessionId}/clipboard`, {
-            "method": "PUT",
-            "headers": {"Content-Type": "text/plain"},
-            body: document.getElementById("clipboardText").value,
-            credentials: 'include',
+        axios.put(apiBaseURL + `/v1/sessions/${params.sessionId}/clipboard`, document.getElementById("clipboardText").value, {
+            headers: {"Content-Type": "text/plain"},
+            withCredentials: true,
         })
             .then(response => {
                 if (response.status !== 204) {
-                    return Promise.reject(response.text());
+                    return Promise.reject(response.data);
                 }
                 if (alertMsg !== "") {
                     setAlertMsg("")
@@ -70,15 +68,20 @@ export default function ClipboardRoute() {
             })
     }
 
-    const handleChange = (event) => {
-        setContent(event.target.value);
-    }
-
     useEffect(() => {
+        if (timer.current) {
+            return;
+        }
+
         lastModified.current = "";
         refresh()
-        setInterval(refresh, 1000)
-    }, [])
+        timer.current = setInterval(refresh, 1000)
+
+        return () => {
+            clearInterval(timer.current)
+            timer.current = null
+        }
+    })
 
     return (
         <Container>
@@ -94,7 +97,7 @@ export default function ClipboardRoute() {
                         </Col>
                     </Row>}
                     <Row className="mt-3">
-                        <textarea value={content} onChange={handleChange} className="form-control" id="clipboardText" rows="30"></textarea>
+                        <textarea ref={content} className="form-control" id="clipboardText" rows="30"></textarea>
                     </Row>
                     <Row className="mt-3">
                         <Col className="col-3" />
