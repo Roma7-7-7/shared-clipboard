@@ -24,6 +24,11 @@ type genericErrorResponse struct {
 	Details any    `json:"details,omitempty"`
 }
 
+type paginatedResponse struct {
+	Items      any `json:"items"`
+	TotalItems int `json:"totalItems"`
+}
+
 type responder struct {
 	log log.TracedLogger
 }
@@ -46,7 +51,7 @@ func (r *responder) Send(ctx context.Context, rw http.ResponseWriter, status int
 		}
 	}
 	if !contentTypeSet {
-		rw.Header().Set(ContentTypeJSON, ContentTypeJSON)
+		rw.Header().Set(ContentTypeHeader, ContentTypeJSON)
 	}
 	rw.WriteHeader(status)
 

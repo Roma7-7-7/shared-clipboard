@@ -57,7 +57,7 @@ func NewRouter(ctx context.Context, deps Dependencies, log log.TracedLogger) (*c
 
 	sessionHandler := NewSessionHandler(deps.SessionService, deps.ClipboardRepository, resp, log)
 	authorizedRouter.Post("/v1/sessions", sessionHandler.Create)
-	authorizedRouter.Get("/v1/sessions", sessionHandler.GetAllByUserID)
+	authorizedRouter.Get("/v1/sessions", sessionHandler.FilterBy)
 	authorizedRouter.Get("/v1/sessions/{sessionID}", sessionHandler.GetByID)
 	authorizedRouter.Put("/v1/sessions/{sessionID}", sessionHandler.Update)
 	authorizedRouter.Delete("/v1/sessions/{sessionID}", sessionHandler.Delete)
