@@ -41,9 +41,9 @@ function SessionsTable({onSuccess, onError}) {
     const [items, setItems] = useState([])
 
     function refresh() {
-        axios.get(apiBaseURL + '/v1/sessions', {withCredentials: true})
+        axios.get(apiBaseURL + '/v1/sessions?sortBy=updated_at&desc=true', {withCredentials: true})
             .then(response => {
-                setItems(response.data.map((session) => <SessionItem key={session["session_id"]} session={session} onDelete={() => refresh()} />));
+                setItems(response.data.items.map((session) => <SessionItem key={session["session_id"]} session={session} onDelete={() => refresh()} />));
                 onSuccess()
             }).catch(error => {
             console.log("Error: ", error)

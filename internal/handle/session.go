@@ -31,9 +31,10 @@ type (
 
 	SessionService interface {
 		GetByID(ctx context.Context, userID, id uint64) (*domain.Session, error)
-		GetByUserID(ctx context.Context, userID uint64) ([]*domain.Session, error)
+		FilterBy(ctx context.Context, userID uint64, filter domain.SessionFilter) ([]*domain.Session, int, error)
 		Create(ctx context.Context, userID uint64, name string) (*domain.Session, error)
 		Update(ctx context.Context, userID, sessionID uint64, name string) (*domain.Session, error)
+		UpdateUpdatedAt(ctx context.Context, sessionID uint64) error
 		Delete(ctx context.Context, userID, sessionID uint64) error
 	}
 
@@ -105,7 +106,7 @@ func (h *SessionHandler) GetByID(rw http.ResponseWriter, r *http.Request) {
 	}, toDTO(session))
 }
 
-func (h *SessionHandler) GetAllByUserID(rw http.ResponseWriter, r *http.Request) {
+func (h *SessionHandler) FilterBy(rw http.ResponseWriter, r *http.Request) {
 	var (
 		ctx = r.Context()
 	)
@@ -118,9 +119,36 @@ func (h *SessionHandler) GetAllByUserID(rw http.ResponseWriter, r *http.Request)
 	}
 	h.log.Debugw(ctx, "Get all sessions by user", "userID", auth.UserID)
 
-	sessions, err := h.service.GetByUserID(ctx, auth.UserID)
+	limitStr := r.URL.Query().Get("limit")
+	if limitStr == "" {
+		limitStr = "100"
+	}
+	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
-		h.log.Errorw(ctx, "failed to get sessions", "userID", auth.UserID, err)
+		h.log.Debugw(ctx, "failed to parse limit", "limit", limitStr, err)
+		h.resp.SendBadRequest(ctx, rw, "limit param must be a valid int value")
+		return
+	}
+	offsetStr := r.URL.Query().Get("offset")
+	if offsetStr == "" {
+		offsetStr = "0"
+	}
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil {
+		h.log.Debugw(ctx, "failed to parse offset", "offset", offset, err)
+		h.resp.SendBadRequest(ctx, rw, "offset param must be a valid int value")
+		return
+	}
+
+	sessions, total, err := h.service.FilterBy(ctx, auth.UserID, domain.SessionFilter{
+		Name:       r.URL.Query().Get("name"),
+		SortBy:     r.URL.Query().Get("sortBy"),
+		SortByDesc: strings.EqualFold(r.URL.Query().Get("desc"), "true"),
+		Limit:      limit,
+		Offset:     offset,
+	})
+	if err != nil {
+		h.log.Errorw(ctx, "failed to get sessions", err)
 		h.resp.SendInternalServerError(ctx, rw)
 		return
 	}
@@ -131,7 +159,10 @@ func (h *SessionHandler) GetAllByUserID(rw http.ResponseWriter, r *http.Request)
 		res = append(res, toDTO(session))
 	}
 
-	h.resp.Send(ctx, rw, http.StatusOK, nil, res)
+	h.resp.Send(ctx, rw, http.StatusOK, nil, &paginatedResponse{
+		Items:      res,
+		TotalItems: total,
+	})
 }
 
 func (h *SessionHandler) Create(rw http.ResponseWriter, r *http.Request) {
@@ -370,6 +401,11 @@ func (h *SessionHandler) SetClipboard(rw http.ResponseWriter, r *http.Request) {
 		h.resp.SendInternalServerError(ctx, rw)
 		return
 	}
+	go func() {
+		if err := h.service.UpdateUpdatedAt(ctx, sid); err != nil {
+			h.log.Errorw(ctx, "failed to update session updated_at", err)
+		}
+	}()
 
 	h.log.Debugw(ctx, "Set content", "id", sessionID)
 	rw.Header().Set(LastModifiedHeader, clipboard.UpdatedAt.UTC().Format(http.TimeFormat))

@@ -17,6 +17,14 @@ var (
 )
 
 type (
+	SessionFilter struct {
+		Limit      int `validate:"required,gte=1,lte=100"`
+		Name       string
+		SortBy     string `validate:"omitempty,oneof=name updated_at"`
+		SortByDesc bool
+		Offset     int `validate:"gte=0"`
+	}
+
 	Session struct {
 		ID        uint64
 		Name      string
@@ -28,8 +36,10 @@ type (
 	SessionRepository interface {
 		GetByID(id uint64) (*dal.Session, error)
 		GetAllByUserID(userID uint64) ([]*dal.Session, error)
+		FilterBy(dal.SessionFilter) ([]*dal.Session, int, error)
 		Create(name string, userID uint64) (*dal.Session, error)
 		Update(id uint64, name string) (*dal.Session, error)
+		UpdateUpdatedAt(id uint64) error
 		Delete(id uint64) error
 	}
 
@@ -83,6 +93,35 @@ func (s *SessionService) GetByUserID(ctx context.Context, userID uint64) ([]*Ses
 	return res, nil
 }
 
+func (s *SessionService) FilterBy(ctx context.Context, userID uint64, filter SessionFilter) ([]*Session, int, error) {
+	s.log.Debugw(ctx, "filter sessions", "userID", userID, "filter", filter)
+
+	filterOpts := make([]func(dal.SessionFilter) dal.SessionFilter, 0, 3)
+	if filter.Name != "" {
+		filterOpts = append(filterOpts, dal.WithName(filter.Name))
+	}
+	switch filter.SortBy {
+	case "name":
+		filterOpts = append(filterOpts, dal.WithSortByName(filter.SortByDesc))
+	case "updated_at":
+		filterOpts = append(filterOpts, dal.WithSortByUpdateAt(filter.SortByDesc))
+	}
+	filterOpts = append(filterOpts, dal.WithOffset(filter.Offset))
+	dalFilter := dal.NewSessionFilter(userID, filter.Limit, filterOpts...)
+
+	sessions, total, err := s.sessionRepo.FilterBy(dalFilter)
+	if err != nil {
+		return nil, 0, fmt.Errorf("filter sessions by %v: %w", filter, err)
+	}
+
+	s.log.Debugw(ctx, "sessions found", "count", len(sessions), "total", total)
+	res := make([]*Session, 0, len(sessions))
+	for _, session := range sessions {
+		res = append(res, toSession(session))
+	}
+	return res, total, nil
+}
+
 func (s *SessionService) Create(ctx context.Context, userID uint64, name string) (*Session, error) {
 	s.log.Debugw(ctx, "create session", "name", name, "userID", userID)
 
@@ -126,6 +165,17 @@ func (s *SessionService) Update(ctx context.Context, userID, sessionID uint64, n
 
 	s.log.Debugw(ctx, "session updated", "session", updated)
 	return toSession(updated), nil
+}
+
+func (s *SessionService) UpdateUpdatedAt(ctx context.Context, sessionID uint64) error {
+	s.log.Debugw(ctx, "update session updated_at", "sessionID", sessionID)
+
+	if err := s.sessionRepo.UpdateUpdatedAt(sessionID); err != nil {
+		return fmt.Errorf("update session updated_at by id=%d: %w", sessionID, err)
+	}
+
+	s.log.Debugw(ctx, "session updated_at updated", "sessionID", sessionID)
+	return nil
 }
 
 func (s *SessionService) Delete(ctx context.Context, userID, sessionID uint64) error {
