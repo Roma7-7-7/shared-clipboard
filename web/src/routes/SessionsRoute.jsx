@@ -1,5 +1,5 @@
 import {useEffect, useState} from "react";
-import {Alert, Col, Container, Row, Table} from "react-bootstrap";
+import {Alert, Col, Container, Pagination, Row, Table} from "react-bootstrap";
 import {apiBaseURL} from "../env.jsx";
 import {Link} from "react-router-dom";
 import {Pen, Trash} from "react-bootstrap-icons";
@@ -7,6 +7,46 @@ import axios from "axios";
 
 export default function SessionsRoute() {
     const [alertMessage, setAlertMessage] = useState("")
+    const [pagination, setPagination] = useState({
+        page: 1,
+        pageSize: 5,
+        totalPages: 1,
+        sortBy: "updated_at",
+        sortByDesc: true,
+    })
+    const [sessions, setSessions] = useState({
+        items: [],
+        totalItems: 0,
+    })
+
+    function refresh() {
+        const offset = (pagination.page - 1) * pagination.pageSize;
+        axios.get(apiBaseURL + `/v1/sessions?sortBy=${pagination.sortBy}&desc=${pagination.sortByDesc}&limit=${pagination.pageSize}&offset=${offset}`, {withCredentials: true})
+            .then(response => {
+                setSessions({
+                    items: response.data.items,
+                    totalItems: response.data.totalItems,
+                })
+                if (alertMessage !== "") {
+                    setAlertMessage("")
+                }
+            }).catch(error => {
+            console.log("Error: ", error)
+            setAlertMessage("Failed to fetch sessions")
+        })
+    }
+
+    useEffect(() => {
+        refresh()
+    }, [pagination])
+
+    const handlePageChange = (page) => {
+        setPagination({
+            ...pagination,
+            page: page,
+        })
+    }
+
     return (
         <Container>
             <Row>
@@ -21,14 +61,17 @@ export default function SessionsRoute() {
                         </Alert>
                     </Row>}
                     <Row>
-                        <SessionsTable onSuccess={() => {setAlertMessage("")}} onError={(msg) => {setAlertMessage(msg)}} />
+                        <SessionsTable sessions={sessions.items} onDelete={() => refresh()}/>
                     </Row>
+                    <PaginationFooter page={pagination.page}
+                                      totalPages={Math.ceil(sessions.totalItems / pagination.pageSize)}
+                                      onPageChange={handlePageChange}/>
                     <Row className="text-center">
-                        <Col />
+                        <Col/>
                         <Col>
                             <Link to="new" className="btn btn-primary">New Session</Link>
                         </Col>
-                        <Col />
+                        <Col/>
                     </Row>
                 </Col>
                 <Col/>
@@ -37,36 +80,20 @@ export default function SessionsRoute() {
     )
 }
 
-function SessionsTable({onSuccess, onError}) {
-    const [items, setItems] = useState([])
-
-    function refresh() {
-        axios.get(apiBaseURL + '/v1/sessions?sortBy=updated_at&desc=true', {withCredentials: true})
-            .then(response => {
-                setItems(response.data.items.map((session) => <SessionItem key={session["session_id"]} session={session} onDelete={() => refresh()} />));
-                onSuccess()
-            }).catch(error => {
-            console.log("Error: ", error)
-            onError("Failed to fetch sessions")
-        })
-    }
-
-    useEffect(() => {
-        refresh()
-    }, [])
-
+function SessionsTable({sessions, onDelete}) {
     return (
         <Table striped bordered hover>
             <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Last used at</th>
-                    <th className="text-center">Edit</th>
-                    <th className="text-center">Delete</th>
-                </tr>
+            <tr>
+                <th>Name</th>
+                <th>Last used at</th>
+                <th className="text-center">Edit</th>
+                <th className="text-center">Delete</th>
+            </tr>
             </thead>
             <tbody>
-                {items}
+            {sessions.map((session) => <SessionItem key={session["session_id"]} session={session}
+                                                    onDelete={onDelete}/>)}
             </tbody>
         </Table>
     )
@@ -101,6 +128,61 @@ function SessionItem({session, onDelete}) {
             </td>
         </tr>
     )
+}
+
+function PaginationFooter({page, totalPages, onPageChange}) {
+    if (totalPages <= 1) {
+        return (<></>)
+    }
+
+    if (totalPages <= 4) {
+        const items = []
+        for (let i = 1; i <= totalPages; i++) {
+            items.push(<Pagination.Item onClick={() => onPageChange(i)} active={page === i}>{i}</Pagination.Item>)
+        }
+        return (
+            <Row className="text-center">
+                <Pagination>
+                    {items}
+                </Pagination>
+            </Row>
+        )
+    }
+
+    const items = []
+    items.push(<Pagination.Item onClick={() => onPageChange(1)} disabled={page === 1}>1</Pagination.Item>)
+    switch (page) {
+        case 1:
+            items.push(<Pagination.Item onClick={() => onPageChange(2)} active>{2}</Pagination.Item>)
+            break
+        case 2:
+            items.push(<Pagination.Item onClick={() => onPageChange(page)} active>{page}</Pagination.Item>)
+            items.push(<Pagination.Item onClick={() => onPageChange(page + 1)}>{page + 1}</Pagination.Item>)
+            break
+    }
+    items.push(<Pagination.Ellipsis/>)
+
+    switch (page) {
+        case totalPages:
+            items.push(<Pagination.Item onClick={() => onPageChange(page - 1)}>{page - 1}</Pagination.Item>)
+            items.push(<Pagination.Item onClick={() => onPageChange(page)} active>{page}</Pagination.Item>)
+            break
+        case totalPages - 1:
+            items.push(<Pagination.Item onClick={() => onPageChange(page - 1)}>{page - 1}</Pagination.Item>)
+            items.push(<Pagination.Item onClick={() => onPageChange(page)} active>{page}</Pagination.Item>)
+            items.push(<Pagination.Item onClick={() => onPageChange(page + 1)}>{page + 1}</Pagination.Item>)
+            break
+    }
+
+    items.push(<Pagination.Item onClick={() => onPageChange(totalPages - 1)}>{totalPages - 1}</Pagination.Item>)
+
+
+    return (
+        <Pagination>
+            {items}
+        </Pagination>
+    )
+
 }
 
 function formatLastUsedAt(updatedAt) {
