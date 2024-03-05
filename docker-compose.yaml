@@ -6,7 +6,6 @@ services:
     volumes:
       - ./db/:/app/db/
       - ./configs/:/app/config/
-    network_mode: "host"
   web:
     build: ./web
     ports:

@@ -32,7 +32,7 @@ run:
 
 # Docker
 build-docker:
-	docker build -t clipboard-share:$(VERSION) .
+	docker build -t clipboard-share-api:$(VERSION) .
 
 run-docker:
-	docker run -p 8080:8080 -v $(shell pwd)/db:/app/db -v $(shell pwd)/configs:/app/config --name clipboard-share clipboard-share:$(VERSION)
+	docker run -p 8080:8080 -v $(shell pwd)/db:/app/db -v $(shell pwd)/configs:/app/config --name clipboard-share-api clipboard-share-api:$(VERSION)
