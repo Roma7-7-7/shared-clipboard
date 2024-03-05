@@ -10,3 +10,16 @@ services:
     build: ./web
     ports:
       - "80:80"
+  postgres:
+    image: postgres:16.2
+    privileged: true
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: clipboard-share
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+volumes:
+  postgres:

@@ -1,11 +1,14 @@
 # build
 FROM node:21-alpine3.18 as build
 
+ARG API_HOST=http://localhost:8080
+
 RUN apk add --no-cache make
 RUN npm install -g vite
-
 COPY . /web
 WORKDIR /web
+
+RUN echo "VITE_API_BASE_URL=${API_HOST}" > .env.production
 RUN make build
 
 # run

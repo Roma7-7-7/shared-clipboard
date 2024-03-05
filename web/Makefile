@@ -1,6 +1,9 @@
 
 VERSION=0.1.0
 
+TAG_SUFFIX ?= -local
+API_HOST ?= http://localhost:8080
+
 # Clean
 clean:
 	rm -rf ./dist
@@ -15,7 +18,7 @@ run:
 
 # Docker
 build-docker:
-	docker build -t clipboard-share-web:$(VERSION) -f ./Dockerfile .
+	docker build --build-arg API_HOST=$(API_HOST) -t clipboard-share-web:$(VERSION)$(TAG_SUFFIX) -f ./Dockerfile .
 
 run-docker:
-	docker run -p 80:80 --name clipboard-share-web clipboard-share-web:$(VERSION)
+	docker run -p 80:80 --name clipboard-share-web clipboard-share-web:$(VERSION)$(TAG_SUFFIX)

@@ -1,6 +1,8 @@
 
 VERSION=0.1.0
 
+DB_URL ?= postgres://postgres:postgres@localhost:5432/clipboard-share?sslmode=disable
+
 # Run golangci-lint on code
 lint:
 	golangci-lint run
@@ -16,10 +18,10 @@ clean:
 # Migrate
 # https://github.com/golang-migrate/migrate
 migrate-up:
-	migrate -path ./migrations/sql -database "postgres://postgres:postgres@localhost:5432/clipboard-share?sslmode=disable" up
+	migrate -path ./migrations/sql -database "$(DB_URL)" up
 
 migrate-down:
-	migrate -path ./migrations/sql -database "postgres://postgres:postgres@localhost:5432/clipboard-share?sslmode=disable" down
+	migrate -path ./migrations/sql -database "$(DB_URL)" down
 
 # Build api
 build: clean
