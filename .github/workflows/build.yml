@@ -27,7 +27,7 @@ jobs:
           go mod download
 
       - name: Run build
-        run: make build-app
+        run: make build
 
       - name: Run testing
         run: go test -v ./...
