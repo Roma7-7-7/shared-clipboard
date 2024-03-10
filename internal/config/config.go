@@ -16,6 +16,7 @@ type (
 		Cookie Cookie `json:"cookie"`
 		JWT    JWT    `json:"jwt"`
 		DB     DB     `json:"db"`
+		Redis  Redis  `json:"redis"`
 	}
 
 	Cookie struct {
@@ -43,14 +44,16 @@ type (
 		Path string `json:"path"`
 	}
 
-	SQL struct {
+	DB struct {
 		Driver     string `json:"driver"`
 		DataSource string `json:"data_source"`
 	}
 
-	DB struct {
-		Bolt Bolt `json:"bolt"`
-		SQL  SQL  `json:"sql"`
+	Redis struct {
+		Addr          string `json:"addr"`
+		Password      string `json:"password"`
+		DB            int    `json:"db"`
+		TimeoutMillis int    `json:"timeout_millis"`
 	}
 )
 
@@ -88,14 +91,14 @@ func validateApp(app App) error {
 	if app.Port <= 0 || app.Port > 65535 {
 		return fmt.Errorf("invalid port: %d", app.Port)
 	}
-	if app.DB.Bolt.Path == "" {
-		res = append(res, "empty data path")
+	if app.Redis.Addr == "" {
+		res = append(res, "empty redis addr")
 	}
-	if app.DB.SQL.Driver == "" {
-		res = append(res, "empty postgre driver")
+	if app.DB.Driver == "" {
+		res = append(res, "empty DB driver")
 	}
-	if app.DB.SQL.DataSource == "" {
-		res = append(res, "empty postgre data source")
+	if app.DB.DataSource == "" {
+		res = append(res, "empty DB data source")
 	}
 
 	if len(res) != 0 {

@@ -9,7 +9,6 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 
-	"github.com/Roma7-7-7/shared-clipboard/internal/dal"
 	"github.com/Roma7-7-7/shared-clipboard/internal/domain"
 	"github.com/Roma7-7-7/shared-clipboard/internal/handle/cookie"
 	"github.com/Roma7-7-7/shared-clipboard/internal/log"
@@ -24,8 +23,8 @@ type (
 	}
 
 	UserService interface {
-		Create(ctx context.Context, name, password string) (*dal.User, error)
-		VerifyPassword(ctx context.Context, name, password string) (*dal.User, error)
+		Create(ctx context.Context, name, password string) (*domain.User, error)
+		VerifyPassword(ctx context.Context, name, password string) (*domain.User, error)
 	}
 
 	CookieProcessor interface {
@@ -34,9 +33,9 @@ type (
 		AccessTokenFromRequest(r *http.Request) (*jwt.Token, error)
 	}
 
-	JWTRepository interface {
-		CreateBlockedJTI(jti string, expires time.Time) error
-		IsBlockedJTIExists(jti string) (bool, error)
+	JTIService interface {
+		CreateBlockedJTI(ctx context.Context, jti string, expires time.Time) error
+		IsBlockedJTIExists(ctx context.Context, jti string) (bool, error)
 	}
 
 	AuthHandler struct {
@@ -44,7 +43,7 @@ type (
 
 		userService     UserService
 		cookieProcessor CookieProcessor
-		jwtRepository   JWTRepository
+		jtiService      JTIService
 
 		log log.TracedLogger
 	}
@@ -56,14 +55,14 @@ type (
 )
 
 func NewAuthHandler(
-	userService UserService, cookieProcessor CookieProcessor, jwtRepository JWTRepository, resp *responder, log log.TracedLogger,
+	userService UserService, cookieProcessor CookieProcessor, jwtRepository JTIService, resp *responder, log log.TracedLogger,
 ) *AuthHandler {
 	return &AuthHandler{
 		resp: resp,
 
 		userService:     userService,
 		cookieProcessor: cookieProcessor,
-		jwtRepository:   jwtRepository,
+		jtiService:      jwtRepository,
 
 		log: log,
 	}
@@ -182,7 +181,7 @@ func (h *AuthHandler) SignOut(rw http.ResponseWriter, r *http.Request) {
 	exp, _ := claims["exp"].(float64)
 	if jti != "" && exp > 0 {
 		expAt := time.Unix(int64(exp), 0)
-		if err = h.jwtRepository.CreateBlockedJTI(jti, expAt); err != nil {
+		if err = h.jtiService.CreateBlockedJTI(ctx, jti, expAt); err != nil {
 			h.log.Errorw(ctx, "failed to create blocked jti", err)
 		}
 	}
@@ -191,7 +190,7 @@ func (h *AuthHandler) SignOut(rw http.ResponseWriter, r *http.Request) {
 	rw.WriteHeader(http.StatusNoContent)
 }
 
-func userToDTO(user *dal.User) *User {
+func userToDTO(user *domain.User) *User {
 	return &User{
 		ID:              user.ID,
 		Name:            user.Name,

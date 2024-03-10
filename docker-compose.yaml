@@ -4,7 +4,6 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./db/:/app/db/
       - ./configs/:/app/config/
   web:
     build: ./web
@@ -12,7 +11,6 @@ services:
       - "80:80"
   postgres:
     image: postgres:16.2
-    privileged: true
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -21,5 +19,13 @@ services:
       - postgres:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+  redis:
+    image: redis:7.2-alpine
+    restart: always
+    ports:
+      - '6379:6379'
+    volumes:
+      - cache:/data
 volumes:
   postgres:
+  cache:

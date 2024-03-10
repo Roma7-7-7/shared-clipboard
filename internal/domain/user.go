@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -17,6 +18,15 @@ const (
 )
 
 type (
+	User struct {
+		ID           uint64
+		Name         string
+		Password     string
+		PasswordSalt string
+		CreatedAt    time.Time
+		UpdatedAt    time.Time
+	}
+
 	UserRepository interface {
 		GetByName(name string) (*dal.User, error)
 		Create(name, password, passwordSalt string) (*dal.User, error)
@@ -35,7 +45,7 @@ func NewUserService(repo UserRepository, log log.TracedLogger) *UserService {
 	}
 }
 
-func (s *UserService) Create(ctx context.Context, name, password string) (*dal.User, error) {
+func (s *UserService) Create(ctx context.Context, name, password string) (*User, error) {
 	s.log.Debugw(ctx, "creating user", "name", name)
 
 	if err := validateSignup(name, password); err != nil {
@@ -63,10 +73,10 @@ func (s *UserService) Create(ctx context.Context, name, password string) (*dal.U
 	}
 
 	s.log.Debugw(ctx, "user created", "id", user.ID)
-	return user, nil
+	return toDomainUser(user), nil
 }
 
-func (s *UserService) VerifyPassword(ctx context.Context, name, password string) (*dal.User, error) {
+func (s *UserService) VerifyPassword(ctx context.Context, name, password string) (*User, error) {
 	s.log.Debugw(ctx, "verifying password", "name", name)
 
 	user, err := s.repo.GetByName(name)
@@ -92,7 +102,7 @@ func (s *UserService) VerifyPassword(ctx context.Context, name, password string)
 	}
 
 	s.log.Debugw(ctx, "password verified", "id", user.ID)
-	return user, nil
+	return toDomainUser(user), nil
 }
 
 func validateSignup(name, password string) *RenderableError {
@@ -114,6 +124,17 @@ func validateSignup(name, password string) *RenderableError {
 	}
 
 	return nil
+}
+
+func toDomainUser(dalUser *dal.User) *User {
+	return &User{
+		ID:           dalUser.ID,
+		Name:         dalUser.Name,
+		Password:     dalUser.Password,
+		PasswordSalt: dalUser.PasswordSalt,
+		CreatedAt:    dalUser.CreatedAt,
+		UpdatedAt:    dalUser.UpdatedAt,
+	}
 }
 
 func checkName(name string) error {

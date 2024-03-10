@@ -16,16 +16,17 @@
   "jwt": {
     "issuer": "clipboard-share",
     "audience": ["http://localhost:8080", "https://localhost:8080"],
-    "expire_in_minutes": 44640,
+    "expire_in_minutes": 1440,
     "secret": "secret"
   },
+  "redis": {
+    "addr": "redis:6379",
+    "password": "",
+    "db": 0,
+    "timeout_millis": 100
+  },
   "db": {
-    "bolt": {
-      "path": "./db/bolt.db"
-    },
-    "sql": {
-      "driver": "postgres",
-      "data_source": "postgres://postgres:postgres@postgres:5432/clipboard-share?sslmode=disable"
-    }
+    "driver": "postgres",
+    "data_source": "postgres://postgres:postgres@postgres:5432/clipboard-share?sslmode=disable"
   }
 }

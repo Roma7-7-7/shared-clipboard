@@ -1,18 +1,28 @@
-package postgre
+package dal
 
 import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/lib/pq"
-
-	"github.com/Roma7-7-7/shared-clipboard/internal/dal"
 )
 
-type UserRepository struct {
-	db *sql.DB
-}
+type (
+	User struct {
+		ID           uint64
+		Name         string
+		Password     string
+		PasswordSalt string
+		CreatedAt    time.Time
+		UpdatedAt    time.Time
+	}
+
+	UserRepository struct {
+		db *sql.DB
+	}
+)
 
 func NewUserRepository(db *sql.DB) (*UserRepository, error) {
 	return &UserRepository{
@@ -20,8 +30,8 @@ func NewUserRepository(db *sql.DB) (*UserRepository, error) {
 	}, nil
 }
 
-func (r *UserRepository) GetByID(id uint64) (*dal.User, error) {
-	var res dal.User
+func (r *UserRepository) GetByID(id uint64) (*User, error) {
+	var res User
 
 	if err := r.db.QueryRow("SELECT user_id, name, password, password_salt, created_at, updated_at FROM users WHERE user_id = $1", id).Scan(
 		&res.ID,
@@ -32,7 +42,7 @@ func (r *UserRepository) GetByID(id uint64) (*dal.User, error) {
 		&res.UpdatedAt,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("user with id=%d not found: %w", id, dal.ErrNotFound)
+			return nil, fmt.Errorf("user with id=%d not found: %w", id, ErrNotFound)
 		}
 
 		return nil, fmt.Errorf("get user by user_id=%d: %w", id, err)
@@ -41,8 +51,8 @@ func (r *UserRepository) GetByID(id uint64) (*dal.User, error) {
 	return &res, nil
 }
 
-func (r *UserRepository) GetByName(name string) (*dal.User, error) {
-	var res dal.User
+func (r *UserRepository) GetByName(name string) (*User, error) {
+	var res User
 
 	if err := r.db.QueryRow("SELECT user_id, name, password, password_salt, created_at, updated_at FROM users WHERE name = $1", name).Scan(
 		&res.ID,
@@ -53,7 +63,7 @@ func (r *UserRepository) GetByName(name string) (*dal.User, error) {
 		&res.UpdatedAt,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("user with name=\"%s\" not found: %w", name, dal.ErrNotFound)
+			return nil, fmt.Errorf("user with name=\"%s\" not found: %w", name, ErrNotFound)
 		}
 
 		return nil, fmt.Errorf("get user by name=\"%s\": %w", name, err)
@@ -62,8 +72,8 @@ func (r *UserRepository) GetByName(name string) (*dal.User, error) {
 	return &res, nil
 }
 
-func (r *UserRepository) Create(name, password, passwordSalt string) (*dal.User, error) {
-	res := dal.User{
+func (r *UserRepository) Create(name, password, passwordSalt string) (*User, error) {
+	res := User{
 		Name:         name,
 		Password:     password,
 		PasswordSalt: passwordSalt,
@@ -76,7 +86,7 @@ func (r *UserRepository) Create(name, password, passwordSalt string) (*dal.User,
 	); err != nil {
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) && pqErr.Code == pgConflictErrorCode {
-			return nil, fmt.Errorf("create user with name=\"%s\": %w", name, dal.ErrConflictUnique)
+			return nil, fmt.Errorf("create user with name=\"%s\": %w", name, ErrConflictUnique)
 		}
 
 		return nil, fmt.Errorf("create user: %w", err)

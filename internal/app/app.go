@@ -9,11 +9,10 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	bolt "go.etcd.io/bbolt"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/Roma7-7-7/shared-clipboard/internal/config"
-	"github.com/Roma7-7-7/shared-clipboard/internal/dal/local"
-	"github.com/Roma7-7-7/shared-clipboard/internal/dal/postgre"
+	"github.com/Roma7-7-7/shared-clipboard/internal/dal"
 	"github.com/Roma7-7-7/shared-clipboard/internal/domain"
 	"github.com/Roma7-7-7/shared-clipboard/internal/handle"
 	"github.com/Roma7-7-7/shared-clipboard/internal/handle/cookie"
@@ -31,35 +30,28 @@ type (
 
 func NewApp(ctx context.Context, conf config.App, traced log.TracedLogger) (*App, error) {
 	traced.Infow(ctx, "Initializing SQL DB")
-	sqlDB, err := sql.Open(conf.DB.SQL.Driver, conf.DB.SQL.DataSource)
+	sqlDB, err := sql.Open(conf.DB.Driver, conf.DB.DataSource)
 	if err != nil {
 		return nil, fmt.Errorf("open sql db: %w", err)
 	}
 
-	traced.Infow(ctx, "Initializing Bolt DB")
-	boltDB, err := bolt.Open(conf.DB.Bolt.Path, 0600, nil)
-	if err != nil {
-		return nil, fmt.Errorf("open bolt db: %w", err)
-	}
+	redis := redis.NewClient(&redis.Options{
+		Addr:         conf.Redis.Addr,
+		Password:     conf.Redis.Password,
+		DB:           conf.Redis.DB,
+		ReadTimeout:  time.Duration(conf.Redis.TimeoutMillis) * time.Millisecond,
+		WriteTimeout: time.Duration(conf.Redis.TimeoutMillis) * time.Millisecond,
+	})
 
 	traced.Infow(ctx, "Initializing repositories")
-	userRpo, err := postgre.NewUserRepository(sqlDB)
+	userRpo, err := dal.NewUserRepository(sqlDB)
 	if err != nil {
 		return nil, fmt.Errorf("create user repository: %w", err)
 	}
-	sessionRepo, err := postgre.NewSessionRepository(sqlDB)
+	sessionRepo, err := dal.NewSessionRepository(sqlDB)
 	if err != nil {
 		return nil, fmt.Errorf("create session repository: %w", err)
 	}
-	clipboardRepo, err := local.NewClipboardRepository(boltDB)
-	if err != nil {
-		return nil, fmt.Errorf("create clipboard repository: %w", err)
-	}
-	jwtRepo, err := local.NewJWTRepository(boltDB)
-	if err != nil {
-		return nil, fmt.Errorf("create jwt repository: %w", err)
-	}
-
 	traced.Infow(ctx, "Initializing services")
 	userService := domain.NewUserService(userRpo, traced)
 
@@ -71,12 +63,12 @@ func NewApp(ctx context.Context, conf config.App, traced log.TracedLogger) (*App
 
 	traced.Infow(ctx, "Creating router")
 	h, err := handle.NewRouter(ctx, handle.Dependencies{
-		Config:              conf,
-		CookieProcessor:     cookieProcessor,
-		UserService:         userService,
-		JWTRepository:       jwtRepo,
-		SessionService:      sessionService,
-		ClipboardRepository: clipboardRepo,
+		Config:           conf,
+		CookieProcessor:  cookieProcessor,
+		UserService:      userService,
+		JTIService:       domain.NewJTIService(redis, traced),
+		SessionService:   sessionService,
+		ClipboardService: domain.NewClipboardService(redis, traced),
 	}, traced)
 	if err != nil {
 		return nil, fmt.Errorf("create router: %w", err)

@@ -20,9 +20,9 @@ type Dependencies struct {
 	Config config.App
 	CookieProcessor
 	UserService
-	JWTRepository
+	JTIService
 	SessionService
-	ClipboardRepository
+	ClipboardService
 }
 
 func NewRouter(ctx context.Context, deps Dependencies, log log.TracedLogger) (*chi.Mux, error) {
@@ -48,14 +48,14 @@ func NewRouter(ctx context.Context, deps Dependencies, log log.TracedLogger) (*c
 
 	resp := &responder{log: log}
 
-	authHandler := NewAuthHandler(deps.UserService, deps.CookieProcessor, deps.JWTRepository, resp, log)
+	authHandler := NewAuthHandler(deps.UserService, deps.CookieProcessor, deps.JTIService, resp, log)
 	r.Post("/signup", authHandler.SignUp)
 	r.Post("/signin", authHandler.SignIn)
 	r.Post("/signout", authHandler.SignOut)
 
-	authorizedRouter := r.With(NewAuthorizedMiddleware(deps.CookieProcessor, deps.JWTRepository, resp, log).Handle)
+	authorizedRouter := r.With(NewAuthorizedMiddleware(deps.CookieProcessor, deps.JTIService, resp, log).Handle)
 
-	sessionHandler := NewSessionHandler(deps.SessionService, deps.ClipboardRepository, resp, log)
+	sessionHandler := NewSessionHandler(deps.SessionService, deps.ClipboardService, resp, log)
 	authorizedRouter.Post("/v1/sessions", sessionHandler.Create)
 	authorizedRouter.Get("/v1/sessions", sessionHandler.FilterBy)
 	authorizedRouter.Get("/v1/sessions/{sessionID}", sessionHandler.GetByID)
