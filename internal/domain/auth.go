@@ -28,7 +28,7 @@ func NewJTIService(client RedisClient, log log.TracedLogger) *JTIService {
 func (s *JTIService) CreateBlockedJTI(ctx context.Context, jti string, expires time.Time) error {
 	key := jtiKey(jti)
 	s.log.Infow(ctx, "Creating blocked JTI", "key", key, "expires", expires)
-	set := s.client.Set(ctx, key, "blocked", expires.Sub(time.Now()))
+	set := s.client.Set(ctx, key, "blocked", time.Until(expires))
 	if set.Err() != nil {
 		return fmt.Errorf("set blocked jti with key=%q: %w", key, set.Err())
 	}
