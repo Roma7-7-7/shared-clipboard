@@ -13,14 +13,14 @@ type (
 )
 
 var (
+	ErrNotFound = fmt.Errorf("not found")
+
 	ErrorBadRequest              = ErrorCode{"ERR_0400", http.StatusBadRequest}
 	ErrorCodeUnauthorized        = ErrorCode{"ERR_0401", http.StatusUnauthorized}
 	ErrorCodeForbidden           = ErrorCode{"ERR_0403", http.StatusForbidden}
 	ErrorCodeNotFound            = ErrorCode{"ERR_0404", http.StatusNotFound}
 	ErrorCodeMethodNotAllowed    = ErrorCode{"ERR_0405", http.StatusMethodNotAllowed}
 	ErrorCodeInternalServerError = ErrorCode{"ERR_0500", http.StatusInternalServerError}
-
-	ErrorCodeMarshalResponse = ErrorCode{"ERR_1001", http.StatusInternalServerError}
 
 	ErrorCodeSignupBadRequest   = ErrorCode{"ERR_2101", http.StatusBadRequest}
 	ErrorCodeSignupConflict     = ErrorCode{"ERR_2102", http.StatusBadRequest}

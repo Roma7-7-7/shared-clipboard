@@ -1,19 +1,114 @@
-package postgre
+package dal
 
 import (
 	"database/sql"
 	"errors"
 	"fmt"
 	"sync"
-
-	"github.com/Roma7-7-7/shared-clipboard/internal/dal"
+	"time"
 )
 
 type (
+	SessionFilter struct {
+		userID          uint64
+		limit           int
+		name            string
+		sortBy          string
+		sortByDirection string
+		offset          int
+	}
+
+	Session struct {
+		ID        uint64
+		Name      string
+		UserID    uint64
+		CreatedAt time.Time
+		UpdatedAt time.Time
+	}
+
 	SessionRepository struct {
 		db *sql.DB
 	}
 )
+
+func (s SessionFilter) UserID() uint64 {
+	return s.userID
+}
+
+func (s SessionFilter) Limit() int {
+	return s.limit
+}
+
+func (s SessionFilter) Name() string {
+	return s.name
+}
+
+func (s SessionFilter) SortBy() string {
+	return s.sortBy
+}
+
+func (s SessionFilter) SortByDirection() string {
+	return s.sortByDirection
+}
+
+func (s SessionFilter) Offset() int {
+	return s.offset
+}
+
+func WithName(name string) func(SessionFilter) SessionFilter {
+	return func(f SessionFilter) SessionFilter {
+		f.name = name
+		return f
+	}
+}
+
+func WithSortByName(desc bool) func(SessionFilter) SessionFilter {
+	return func(f SessionFilter) SessionFilter {
+		f.sortBy = "name"
+		if desc {
+			f.sortByDirection = "DESC"
+		} else {
+			f.sortByDirection = "ASC"
+		}
+		return f
+	}
+}
+
+func WithSortByUpdateAt(desc bool) func(SessionFilter) SessionFilter {
+	return func(f SessionFilter) SessionFilter {
+		f.sortBy = "updated_at"
+		if desc {
+			f.sortByDirection = "DESC"
+		} else {
+			f.sortByDirection = "ASC"
+		}
+		return f
+	}
+}
+
+func WithOffset(offset int) func(SessionFilter) SessionFilter {
+	return func(f SessionFilter) SessionFilter {
+		f.offset = offset
+		return f
+	}
+}
+
+func NewSessionFilter(userID uint64, limit int, opts ...func(SessionFilter) SessionFilter) SessionFilter {
+	f := SessionFilter{
+		userID:          userID,
+		limit:           limit,
+		name:            "",
+		sortBy:          "updated_at",
+		sortByDirection: "ASC",
+		offset:          0,
+	}
+
+	for _, opt := range opts {
+		f = opt(f)
+	}
+
+	return f
+}
 
 func NewSessionRepository(db *sql.DB) (*SessionRepository, error) {
 	return &SessionRepository{
@@ -21,8 +116,8 @@ func NewSessionRepository(db *sql.DB) (*SessionRepository, error) {
 	}, nil
 }
 
-func (r *SessionRepository) GetByID(id uint64) (*dal.Session, error) {
-	var res dal.Session
+func (r *SessionRepository) GetByID(id uint64) (*Session, error) {
+	var res Session
 
 	if err := r.db.QueryRow("SELECT session_id, user_id, name, created_at, updated_at FROM sessions WHERE session_id = $1", id).
 		Scan(
@@ -33,7 +128,7 @@ func (r *SessionRepository) GetByID(id uint64) (*dal.Session, error) {
 			&res.UpdatedAt,
 		); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("session with session_id=%d not found: %w", id, dal.ErrNotFound)
+			return nil, fmt.Errorf("session with session_id=%d not found: %w", id, ErrNotFound)
 		}
 
 		return nil, fmt.Errorf("get session by session_id=%d: %w", id, err)
@@ -42,8 +137,8 @@ func (r *SessionRepository) GetByID(id uint64) (*dal.Session, error) {
 	return &res, nil
 }
 
-func (r *SessionRepository) GetAllByUserID(userID uint64) ([]*dal.Session, error) {
-	res := make([]*dal.Session, 0, 10)
+func (r *SessionRepository) GetAllByUserID(userID uint64) ([]*Session, error) {
+	res := make([]*Session, 0, 10)
 
 	rows, err := r.db.Query("SELECT session_id, user_id, name, created_at, updated_at FROM sessions WHERE user_id = $1 ORDER BY updated_at DESC", userID)
 	if err != nil {
@@ -56,7 +151,7 @@ func (r *SessionRepository) GetAllByUserID(userID uint64) ([]*dal.Session, error
 	defer rows.Close()
 
 	for rows.Next() {
-		var s dal.Session
+		var s Session
 
 		if err = rows.Scan(
 			&s.ID,
@@ -74,10 +169,10 @@ func (r *SessionRepository) GetAllByUserID(userID uint64) ([]*dal.Session, error
 	return res, nil
 }
 
-func (r *SessionRepository) FilterBy(filter dal.SessionFilter) ([]*dal.Session, int, error) {
+func (r *SessionRepository) FilterBy(filter SessionFilter) ([]*Session, int, error) {
 	var (
 		totalCount      = 0
-		res             = make([]*dal.Session, 0, 10)
+		res             = make([]*Session, 0, 10)
 		filterQuery     = "user_id = $1 AND ($2 = '' OR name LIKE $2)"
 		totalCountQuery = "SELECT COUNT(*) FROM sessions WHERE " + filterQuery
 		query           = fmt.Sprintf("SELECT session_id, user_id, name, created_at, updated_at FROM sessions WHERE "+filterQuery+" ORDER BY %s %s OFFSET $3 LIMIT $4", filter.SortBy(), filter.SortByDirection())
@@ -112,7 +207,7 @@ func (r *SessionRepository) FilterBy(filter dal.SessionFilter) ([]*dal.Session, 
 		defer rows.Close()
 
 		for rows.Next() {
-			var s dal.Session
+			var s Session
 
 			if err = rows.Scan(
 				&s.ID,
@@ -143,8 +238,8 @@ func (r *SessionRepository) FilterBy(filter dal.SessionFilter) ([]*dal.Session, 
 	return res, totalCount, nil
 }
 
-func (r *SessionRepository) Create(name string, userID uint64) (*dal.Session, error) {
-	res := &dal.Session{
+func (r *SessionRepository) Create(name string, userID uint64) (*Session, error) {
+	res := &Session{
 		UserID: userID,
 		Name:   name,
 	}
@@ -163,14 +258,14 @@ func (r *SessionRepository) Create(name string, userID uint64) (*dal.Session, er
 	return res, nil
 }
 
-func (r *SessionRepository) Update(id uint64, name string) (*dal.Session, error) {
+func (r *SessionRepository) Update(id uint64, name string) (*Session, error) {
 	execRes, err := r.db.Exec("UPDATE sessions SET name = $1, updated_at = now() WHERE session_id = $2",
 		name,
 		id,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("session with session_id=%d not found: %w", id, dal.ErrNotFound)
+			return nil, fmt.Errorf("session with session_id=%d not found: %w", id, ErrNotFound)
 		}
 
 		return nil, fmt.Errorf("update session: %w", err)
@@ -181,7 +276,7 @@ func (r *SessionRepository) Update(id uint64, name string) (*dal.Session, error)
 		return nil, fmt.Errorf("get affected rows: %w", err)
 	}
 	if affected == 0 {
-		return nil, fmt.Errorf("session with session_id=%d not found: %w", id, dal.ErrNotFound)
+		return nil, fmt.Errorf("session with session_id=%d not found: %w", id, ErrNotFound)
 	}
 
 	return r.GetByID(id)
@@ -191,7 +286,7 @@ func (r *SessionRepository) UpdateUpdatedAt(id uint64) error {
 	execRes, err := r.db.Exec("UPDATE sessions SET updated_at = now() WHERE session_id = $1", id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("session with session_id=%d not found: %w", id, dal.ErrNotFound)
+			return fmt.Errorf("session with session_id=%d not found: %w", id, ErrNotFound)
 		}
 
 		return fmt.Errorf("update session: %w", err)
@@ -202,7 +297,7 @@ func (r *SessionRepository) UpdateUpdatedAt(id uint64) error {
 		return fmt.Errorf("get affected rows: %w", err)
 	}
 	if affected == 0 {
-		return fmt.Errorf("session with session_id=%d not found: %w", id, dal.ErrNotFound)
+		return fmt.Errorf("session with session_id=%d not found: %w", id, ErrNotFound)
 	}
 
 	return nil
@@ -212,7 +307,7 @@ func (r *SessionRepository) Delete(id uint64) error {
 	execRes, err := r.db.Exec("DELETE FROM sessions WHERE session_id = $1", id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("session with session_id=%d not found: %w", id, dal.ErrNotFound)
+			return fmt.Errorf("session with session_id=%d not found: %w", id, ErrNotFound)
 		}
 
 		return fmt.Errorf("delete session: %w", err)
@@ -223,7 +318,7 @@ func (r *SessionRepository) Delete(id uint64) error {
 		return fmt.Errorf("get affected rows: %w", err)
 	}
 	if affected == 0 {
-		return fmt.Errorf("session with session_id=%d not found: %w", id, dal.ErrNotFound)
+		return fmt.Errorf("session with session_id=%d not found: %w", id, ErrNotFound)
 	}
 
 	return nil

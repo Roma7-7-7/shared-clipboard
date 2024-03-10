@@ -12,7 +12,6 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	ac "github.com/Roma7-7-7/shared-clipboard/internal/context"
-	"github.com/Roma7-7-7/shared-clipboard/internal/dal"
 	"github.com/Roma7-7-7/shared-clipboard/internal/domain"
 	"github.com/Roma7-7-7/shared-clipboard/internal/log"
 )
@@ -38,25 +37,25 @@ type (
 		Delete(ctx context.Context, userID, sessionID uint64) error
 	}
 
-	ClipboardRepository interface {
-		GetBySessionID(id uint64) (*dal.Clipboard, error)
-		SetBySessionID(id uint64, contentType string, content []byte) (*dal.Clipboard, error)
+	ClipboardService interface {
+		GetBySessionID(ctx context.Context, id uint64) (*domain.Clipboard, error)
+		SetBySessionID(ctx context.Context, id uint64, contentType string, content []byte) (*domain.Clipboard, error)
 	}
 
 	SessionHandler struct {
-		resp          *responder
-		service       SessionService
-		clipboardRepo ClipboardRepository
-		log           log.TracedLogger
+		resp             *responder
+		service          SessionService
+		clipboardService ClipboardService
+		log              log.TracedLogger
 	}
 )
 
-func NewSessionHandler(sessionService SessionService, clipboardRepo ClipboardRepository, resp *responder, log log.TracedLogger) *SessionHandler {
+func NewSessionHandler(sessionService SessionService, clipboardService ClipboardService, resp *responder, log log.TracedLogger) *SessionHandler {
 	return &SessionHandler{
-		resp:          resp,
-		service:       sessionService,
-		clipboardRepo: clipboardRepo,
-		log:           log,
+		resp:             resp,
+		service:          sessionService,
+		clipboardService: clipboardService,
+		log:              log,
 	}
 }
 
@@ -328,9 +327,9 @@ func (h *SessionHandler) GetClipboard(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clipboard, err := h.clipboardRepo.GetBySessionID(sid)
+	clipboard, err := h.clipboardService.GetBySessionID(ctx, sid)
 	if err != nil {
-		if errors.Is(err, dal.ErrNotFound) {
+		if errors.Is(err, domain.ErrNotFound) {
 			h.log.Debugw(ctx, "clipboard not found", "id", sessionID)
 			rw.WriteHeader(http.StatusNoContent)
 			return
@@ -389,9 +388,9 @@ func (h *SessionHandler) SetClipboard(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clipboard, err := h.clipboardRepo.SetBySessionID(sid, contentType, body)
+	clipboard, err := h.clipboardService.SetBySessionID(ctx, sid, contentType, body)
 	if err != nil {
-		if errors.Is(err, dal.ErrNotFound) {
+		if errors.Is(err, domain.ErrNotFound) {
 			h.log.Debugw(ctx, "session not found", "id", sessionID)
 			h.resp.SendNotFound(ctx, rw, "Session with provided ID not found")
 			return

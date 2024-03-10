@@ -21,7 +21,7 @@ import (
 type AuthorizedMiddleware struct {
 	resp            *responder
 	cookieProcessor CookieProcessor
-	jwtRepository   JWTRepository
+	jwtRepository   JTIService
 	log             log.TracedLogger
 }
 
@@ -59,7 +59,7 @@ func Logger(l log.TracedLogger) func(next http.Handler) http.Handler {
 }
 
 func NewAuthorizedMiddleware(
-	cookieProcessor CookieProcessor, jwtRepository JWTRepository, resp *responder, log log.TracedLogger,
+	cookieProcessor CookieProcessor, jwtRepository JTIService, resp *responder, log log.TracedLogger,
 ) *AuthorizedMiddleware {
 	return &AuthorizedMiddleware{
 		resp:            resp,
@@ -111,7 +111,7 @@ func (m *AuthorizedMiddleware) Handle(next http.Handler) http.Handler {
 
 		jti, ok := claims["jti"].(string)
 		if ok && jti != "" {
-			ok, err = m.jwtRepository.IsBlockedJTIExists(jti)
+			ok, err = m.jwtRepository.IsBlockedJTIExists(ctx, jti)
 			if err != nil {
 				m.log.Errorw(ctx, "failed to check blocked jti", err)
 				m.resp.SendInternalServerError(ctx, rw)
