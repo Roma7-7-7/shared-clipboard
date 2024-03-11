@@ -1,5 +1,5 @@
 
-VERSION=0.2.0
+VERSION=0.3.0
 
 DB_URL ?= postgres://postgres:postgres@localhost:5432/clipboard-share?sslmode=disable
 
@@ -36,5 +36,8 @@ run:
 build-docker:
 	docker build -t clipboard-share-api:$(VERSION) .
 
+build-docker-release:
+	make build-docker TAG_SUFFIX=
+
 run-docker:
-	docker run -p 8080:8080 -v $(shell pwd)/configs:/app/config --name clipboard-share-api clipboard-share-api:$(VERSION)
+	docker run -p 8080:8080 --name clipboard-share-api clipboard-share-api:$(VERSION)

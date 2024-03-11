@@ -12,9 +12,8 @@ FROM alpine:3.19
 
 EXPOSE 8080
 
-VOLUME /app/config
-
 COPY --from=build /app/bin/app /app
+COPY --from=build /app/configs /app/config
 
 WORKDIR /app
 

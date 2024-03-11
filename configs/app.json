@@ -2,7 +2,7 @@
   "dev": true,
   "port": 8080,
   "cors": {
-    "allow_origins": ["http://localhost", "http://localhost:80", "http://localhost:3000", "http://localhost:5173", "http://clipboard-share.home"],
+    "allow_origins": ["http://localhost", "http://localhost:80", "http://localhost:3000", "http://localhost:5173"],
     "allow_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     "allow_headers": ["Origin", "X-Requested-With", "Content-Type", "Accept", "Authorization", "If-Modified-Since"],
     "expose_headers": ["Location"],
@@ -27,6 +27,11 @@
   },
   "db": {
     "driver": "postgres",
-    "data_source": "postgres://postgres:postgres@postgres:5432/clipboard-share?sslmode=disable"
+    "host": "postgres",
+    "port": 5432,
+    "name": "clipboard-share",
+    "user": "postgres",
+    "password": "postgres",
+    "ssl_mode": "disable"
   }
 }
