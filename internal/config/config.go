@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/kelseyhightower/envconfig"
 )
 
 type (
@@ -21,18 +23,18 @@ type (
 
 	Cookie struct {
 		Path   string `json:"path"`
-		Domain string `json:"domain"`
+		Domain string `json:"domain" envconfig:"APP_COOKIE_DOMAIN"`
 	}
 
 	JWT struct {
 		Issuer          string   `json:"issuer"`
-		Audience        []string `json:"audience"`
+		Audience        []string `json:"audience" envconfig:"APP_JWT_AUDIENCE"`
 		ExpireInMinutes uint64   `json:"expire_in_minutes"`
 		Secret          string   `json:"secret"`
 	}
 
 	CORS struct {
-		AllowOrigins     []string `json:"allow_origins"`
+		AllowOrigins     []string `json:"allow_origins" envconfig:"APP_CORS_ALLOW_ORIGINS"`
 		AllowMethods     []string `json:"allow_methods"`
 		AllowHeaders     []string `json:"allow_headers"`
 		ExposeHeaders    []string `json:"expose_headers"`
@@ -45,12 +47,17 @@ type (
 	}
 
 	DB struct {
-		Driver     string `json:"driver"`
-		DataSource string `json:"data_source"`
+		Driver   string `json:"driver"`
+		Host     string `json:"host" envconfig:"APP_DB_HOST"`
+		Port     int    `json:"port"`
+		Name     string `json:"name"`
+		User     string `json:"user"`
+		Password string `json:"password"`
+		SSLMode  string `json:"ssl_mode"`
 	}
 
 	Redis struct {
-		Addr          string `json:"addr"`
+		Addr          string `json:"addr" envconfig:"APP_REDIS_ADDR"`
 		Password      string `json:"password"`
 		DB            int    `json:"db"`
 		TimeoutMillis int    `json:"timeout_millis"`
@@ -61,6 +68,10 @@ func NewApp(confPath string) (App, error) {
 	var app App
 	if err := readConfig(confPath, &app); err != nil {
 		return app, fmt.Errorf("read config: %w", err)
+	}
+
+	if err := envconfig.Process("app", &app); err != nil {
+		return app, fmt.Errorf("process env: %w", err)
 	}
 
 	return app, validateApp(app)
@@ -97,8 +108,23 @@ func validateApp(app App) error {
 	if app.DB.Driver == "" {
 		res = append(res, "empty DB driver")
 	}
-	if app.DB.DataSource == "" {
-		res = append(res, "empty DB data source")
+	if app.DB.Host == "" {
+		res = append(res, "empty DB host")
+	}
+	if app.DB.Port <= 0 || app.DB.Port > 65535 {
+		res = append(res, "invalid DB port")
+	}
+	if app.DB.Name == "" {
+		res = append(res, "empty DB name")
+	}
+	if app.DB.User == "" {
+		res = append(res, "empty DB user")
+	}
+	if app.DB.Password == "" {
+		res = append(res, "empty DB password")
+	}
+	if app.DB.SSLMode == "" {
+		res = append(res, "empty DB ssl mode")
 	}
 
 	if len(res) != 0 {

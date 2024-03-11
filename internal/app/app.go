@@ -29,8 +29,11 @@ type (
 )
 
 func NewApp(ctx context.Context, conf config.App, traced log.TracedLogger) (*App, error) {
-	traced.Infow(ctx, "Initializing SQL DB")
-	sqlDB, err := sql.Open(conf.DB.Driver, conf.DB.DataSource)
+	dbURL := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+		conf.DB.Host, conf.DB.Port, conf.DB.User, conf.DB.Password, conf.DB.Name, conf.DB.SSLMode,
+	)
+	traced.Infow(ctx, "Initializing SQL DB", "host", conf.DB.Host, "port", conf.DB.Port, "name", conf.DB.Name)
+	sqlDB, err := sql.Open(conf.DB.Driver, dbURL)
 	if err != nil {
 		return nil, fmt.Errorf("open sql db: %w", err)
 	}

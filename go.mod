@@ -11,6 +11,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/redis/go-redis/v9 v9.5.1
 	go.uber.org/zap v1.26.0
+	github.com/kelseyhightower/envconfig v1.4.0
 	golang.org/x/crypto v0.19.0
 )
 
