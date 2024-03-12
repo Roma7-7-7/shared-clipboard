@@ -7,7 +7,7 @@ metadata:
 spec:
   containers:
     - name: web
-      image: clipboard-share-web:0.1.0
+      image: clipboard-share-web:0.2.0
       ports:
         - containerPort: 80
           name: http-web-svc
