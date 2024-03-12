@@ -1,5 +1,5 @@
 
-VERSION=0.1.0
+VERSION=0.2.0
 
 TAG_SUFFIX ?= -local
 API_HOST ?= http://localhost:8080
