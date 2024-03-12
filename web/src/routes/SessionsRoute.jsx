@@ -1,5 +1,5 @@
 import {useEffect, useState} from "react";
-import {Alert, Col, Container, Pagination, Row, Table} from "react-bootstrap";
+import {Alert, Col, Container, Form, Pagination, Row, Table} from "react-bootstrap";
 import {apiBaseURL} from "../env.jsx";
 import {Link} from "react-router-dom";
 import {Pen, Trash} from "react-bootstrap-icons";
@@ -9,7 +9,7 @@ export default function SessionsRoute() {
     const [alertMessage, setAlertMessage] = useState("")
     const [pagination, setPagination] = useState({
         page: 1,
-        pageSize: 5,
+        pageSize: 10,
         totalPages: 1,
         sortBy: "updated_at",
         sortByDesc: true,
@@ -63,9 +63,29 @@ export default function SessionsRoute() {
                     <Row>
                         <SessionsTable sessions={sessions.items} onDelete={() => refresh()}/>
                     </Row>
-                    <PaginationFooter page={pagination.page}
-                                      totalPages={Math.ceil(sessions.totalItems / pagination.pageSize)}
-                                      onPageChange={handlePageChange}/>
+                    <Row>
+                        <Col/>
+                        <Col>
+                            <PaginationFooter page={pagination.page}
+                                              totalPages={Math.ceil(sessions.totalItems / pagination.pageSize)}
+                                              onPageChange={handlePageChange}/>
+                        </Col>
+                        <Col style={{"display": "block ruby", "margin-left": "auto", "margin-right": 0}}>
+                            Page size: <Form.Select style={{width: "75px"}} value={pagination.pageSize}
+                                               onChange={(event) => {
+                                                   setPagination({
+                                                       ...pagination,
+                                                       page: 1,
+                                                       pageSize: event.target.value,
+                                                   })
+                                               }}>
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                        </Form.Select>
+                        </Col>
+                    </Row>
+
                     <Row className="text-center">
                         <Col/>
                         <Col>
@@ -141,48 +161,23 @@ function PaginationFooter({page, totalPages, onPageChange}) {
             items.push(<Pagination.Item onClick={() => onPageChange(i)} active={page === i}>{i}</Pagination.Item>)
         }
         return (
-            <Row className="text-center">
-                <Pagination>
-                    {items}
-                </Pagination>
-            </Row>
+            <Pagination>
+                {items}
+            </Pagination>
         )
     }
 
-    const items = []
-    items.push(<Pagination.Item onClick={() => onPageChange(1)} disabled={page === 1}>1</Pagination.Item>)
-    switch (page) {
-        case 1:
-            items.push(<Pagination.Item onClick={() => onPageChange(2)} active>{2}</Pagination.Item>)
-            break
-        case 2:
-            items.push(<Pagination.Item onClick={() => onPageChange(page)} active>{page}</Pagination.Item>)
-            items.push(<Pagination.Item onClick={() => onPageChange(page + 1)}>{page + 1}</Pagination.Item>)
-            break
-    }
-    items.push(<Pagination.Ellipsis/>)
-
-    switch (page) {
-        case totalPages:
-            items.push(<Pagination.Item onClick={() => onPageChange(page - 1)}>{page - 1}</Pagination.Item>)
-            items.push(<Pagination.Item onClick={() => onPageChange(page)} active>{page}</Pagination.Item>)
-            break
-        case totalPages - 1:
-            items.push(<Pagination.Item onClick={() => onPageChange(page - 1)}>{page - 1}</Pagination.Item>)
-            items.push(<Pagination.Item onClick={() => onPageChange(page)} active>{page}</Pagination.Item>)
-            items.push(<Pagination.Item onClick={() => onPageChange(page + 1)}>{page + 1}</Pagination.Item>)
-            break
-    }
-
-    items.push(<Pagination.Item onClick={() => onPageChange(totalPages - 1)}>{totalPages - 1}</Pagination.Item>)
-
-
     return (
         <Pagination>
-            {items}
-        </Pagination>
-    )
+            <Pagination.First onClick={() => onPageChange(1)} disabled={page === 1}/>
+            <Pagination.Prev onClick={() => onPageChange(page - 1)} disabled={page === 1}/>
 
+            <Pagination.Item active>{page}</Pagination.Item>
+
+            <Pagination.Next onClick={() => onPageChange(page + 1)} disabled={page === totalPages}/>
+            <Pagination.Last onClick={() => onPageChange(totalPages)} disabled={page === totalPages}/>
+        </Pagination>
+    );
 }
 
 function formatLastUsedAt(updatedAt) {
