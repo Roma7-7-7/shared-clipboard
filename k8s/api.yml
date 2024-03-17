@@ -1,3 +1,4 @@
+---
 apiVersion: v1
 kind: Pod
 metadata:
@@ -17,7 +18,7 @@ spec:
         - name: APP_CORS_ALLOW_ORIGINS
           value: "http://clipboard-share.home"
         - name: APP_COOKIE_DOMAIN
-          value: "clipboard-share.home"
+          value: "api.clipboard-share.home"
         - name: APP_JWT_AUDIENCE
           value: "api.clipboard-share.home"
         - name: APP_REDIS_ADDR

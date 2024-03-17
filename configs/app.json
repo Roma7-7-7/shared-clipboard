@@ -1,5 +1,5 @@
 {
-  "dev": true,
+  "dev": false,
   "port": 8080,
   "cors": {
     "allow_origins": ["http://localhost", "http://localhost:80", "http://localhost:3000", "http://localhost:5173"],

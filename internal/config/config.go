@@ -12,7 +12,7 @@ import (
 
 type (
 	App struct {
-		Dev    bool   `json:"dev"`
+		Dev    bool   `json:"dev" envconfig:"APP_DEV_ENV"`
 		Port   int    `json:"port"`
 		CORS   CORS   `json:"cors"`
 		Cookie Cookie `json:"cookie"`
